@@ -37,21 +37,33 @@ class _FilterSidebarState extends State<FilterSidebar> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: const Color(0xFFF1F5F9)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
                   'All Filters',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF1E293B),
+                    letterSpacing: -0.5,
+                  ),
                 ),
                 InkWell(
                   onTap: () {
@@ -64,7 +76,11 @@ class _FilterSidebarState extends State<FilterSidebar> {
                   },
                   child: const Text(
                     'Clear All',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.deepPurple,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],
@@ -76,46 +92,51 @@ class _FilterSidebarState extends State<FilterSidebar> {
           _buildAccordionSection(
             index: 0,
             title: 'Location',
+            icon: LucideIcons.mapPin,
             child: _buildLocationSection(),
           ),
           _buildAccordionSection(
             index: 1,
             title: 'Experience',
+            icon: LucideIcons.briefcase,
             child: _buildExperienceSection(),
           ),
           _buildAccordionSection(
             index: 2,
             title: 'Active In',
+            icon: LucideIcons.clock,
             child: _buildActiveInSection(),
           ),
           _buildAccordionSection(
             index: 3,
             title: 'Matching Skills',
+            icon: LucideIcons.checkCircle,
             child: _buildSkillsSection(),
           ),
           _buildAccordionSection(
             index: 4,
             title: 'English Fluency',
+            icon: LucideIcons.languages,
             child: _buildEnglishFluencySection(),
           ),
 
           // Fixed Bottom Button
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+            padding: const EdgeInsets.all(20),
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {},
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: Colors.deepPurple,
                   foregroundColor: Colors.white,
                   elevation: 0,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
                 child: const Text(
                   'Apply Filters',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
                 ),
               ),
             ),
@@ -128,6 +149,7 @@ class _FilterSidebarState extends State<FilterSidebar> {
   Widget _buildAccordionSection({
     required int index,
     required String title,
+    required IconData icon,
     required Widget child,
   }) {
     final bool isExpanded = _expandedIndex == index;
@@ -137,16 +159,19 @@ class _FilterSidebarState extends State<FilterSidebar> {
         InkWell(
           onTap: () => _toggleSection(index),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF475569),
+                Icon(icon, size: 20, color: Colors.deepPurple),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF334155),
+                    ),
                   ),
                 ),
                 AnimatedRotation(
@@ -154,7 +179,7 @@ class _FilterSidebarState extends State<FilterSidebar> {
                   turns: isExpanded ? 0.5 : 0,
                   child: const Icon(
                     LucideIcons.chevronDown,
-                    size: 16,
+                    size: 18,
                     color: Color(0xFF94A3B8),
                   ),
                 ),
@@ -163,9 +188,9 @@ class _FilterSidebarState extends State<FilterSidebar> {
           ),
         ),
         AnimatedCrossFade(
-          firstChild: Container(),
+          firstChild: const SizedBox.shrink(),
           secondChild: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
             child: child,
           ),
           crossFadeState: isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,

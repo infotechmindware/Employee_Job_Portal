@@ -38,25 +38,49 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
     'Product Manager',
   ];
 
+  final List<Map<String, dynamic>> _candidates = [
+    {
+      'name': 'Alex Johnson',
+      'role': 'Senior Developer',
+      'experience': '5 years',
+      'status': 'New',
+      'image': 'https://i.pravatar.cc/150?u=alex',
+    },
+    {
+      'name': 'Sarah Smith',
+      'role': 'UI/UX Designer',
+      'experience': '3 years',
+      'status': 'Contacted',
+      'image': 'https://i.pravatar.cc/150?u=sarah',
+    },
+    {
+      'name': 'Michael Brown',
+      'role': 'Product Manager',
+      'experience': '8 years',
+      'status': 'New',
+      'image': 'https://i.pravatar.cc/150?u=michael',
+    },
+  ];
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isDesktop = screenWidth > 1024;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFF8FAFC),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(isDesktop ? 24 : 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(),
-            const SizedBox(height: 24),
-            _buildWarningBanner(isDesktop),
-            const SizedBox(height: 24),
-            _buildTabs(),
-            const SizedBox(height: 24),
-            _buildTopFilters(isDesktop),
+            const SizedBox(height: 32),
+            _buildUpgradeCard(isDesktop),
+            const SizedBox(height: 32),
+            _buildStatusCards(),
+            const SizedBox(height: 32),
+            _buildFilterSection(isDesktop),
             const SizedBox(height: 24),
             if (isDesktop)
               Row(
@@ -68,7 +92,7 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
                   ),
                   const SizedBox(width: 24),
                   Expanded(
-                    child: _buildEmptyState(),
+                    child: _buildCandidateList(),
                   ),
                 ],
               )
@@ -76,7 +100,8 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
               Column(
                 children: [
                   const FilterSidebar(),
-                  _buildEmptyState(),
+                  const SizedBox(height: 24),
+                  _buildCandidateList(),
                 ],
               ),
           ],
@@ -86,232 +111,359 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
   }
 
   Widget _buildHeader() {
-    return const Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          'All Candidates',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'All Candidates',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF1E293B),
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Manage and review all job applications',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: const Color(0xFF64748B),
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ],
           ),
         ),
-        SizedBox(height: 4),
-        Text(
-          'Manage and review all job applications',
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.black54,
+        // Smaller Folder Icon
+        Container(
+          width: 70,
+          height: 70,
+          decoration: BoxDecoration(
+            color: Colors.deepPurple.shade50,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Icon(LucideIcons.folder, size: 40, color: Colors.deepPurple.shade200),
+              Positioned(
+                bottom: 12,
+                child: Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(LucideIcons.user, size: 16, color: Colors.deepPurple),
+                ),
+              ),
+            ],
           ),
         ),
       ],
     );
   }
 
-  Widget _buildWarningBanner(bool isDesktop) {
+  Widget _buildUpgradeCard(bool isDesktop) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFBEB),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFFEF3C7)),
+        color: const Color(0xFFFFF7ED),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFFFEDD5)),
       ),
-      child: Flex(
-        direction: isDesktop ? Axis.horizontal : Axis.vertical,
-        crossAxisAlignment: isDesktop ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              const Icon(LucideIcons.alertCircle, color: Color(0xFFD97706), size: 20),
-              const SizedBox(width: 12),
-              if (!isDesktop) 
-                const Text('Upgrade Plan Required', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF92400E))),
-            ],
-          ),
-          const SizedBox(height: 8),
-          const Expanded(
-            flex: 0,
-            child: Text(
-              'Upgrade to view candidate contact details and download resumes. You\'ve reached your contact view limit. Resume download limit reached.',
-              style: TextStyle(
-                fontSize: 13,
-                color: Color(0xFF92400E),
-                height: 1.5,
-              ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: const Color(0xFFFDBA74)),
+                      ),
+                      child: const Icon(LucideIcons.alertCircle, color: Color(0xFFEA580C), size: 16),
+                    ),
+                    const SizedBox(width: 12),
+                    const Flexible(
+                      child: Text(
+                        'Upgrade Plan Required',
+                        style: TextStyle(
+                          color: Color(0xFF9A3412),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Upgrade to view candidate contact details and download resumes. You\'ve reached your limit.',
+                  style: TextStyle(
+                    color: Color(0xFF9A3412),
+                    fontSize: 13,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () {},
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF97316),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Upgrade Plan',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
             ),
           ),
-          SizedBox(height: isDesktop ? 0 : 16),
-          if (!isDesktop) const SizedBox(width: 0) else const SizedBox(width: 16),
-          ElevatedButton(
-            onPressed: () {},
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFEF3C7),
-              foregroundColor: const Color(0xFF92400E),
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
+          if (isDesktop) const SizedBox(width: 40),
+          // Shield Lock Icon (Smaller)
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFEDD5),
+              borderRadius: BorderRadius.circular(16),
             ),
-            child: const Text('Upgrade Plan', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            child: const Icon(LucideIcons.shieldAlert, size: 48, color: Color(0xFFFDBA74)),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildTabs() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: Color(0xFFF1F5F9), width: 1)),
-      ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: List.generate(_tabs.length, (index) {
+  Widget _buildStatusCards() {
+    final List<Map<String, dynamic>> statusOptions = [
+      {'label': 'All', 'count': '124', 'icon': LucideIcons.users, 'color': Colors.deepPurple},
+      {'label': 'New', 'count': '12', 'icon': LucideIcons.userPlus, 'color': Colors.green},
+      {'label': 'Contacting', 'count': '45', 'icon': LucideIcons.phone, 'color': Colors.blue},
+      {'label': 'Interviewed', 'count': '28', 'icon': LucideIcons.calendar, 'color': Colors.indigo},
+      {'label': 'Rejected', 'count': '15', 'icon': LucideIcons.userX, 'color': Colors.red},
+      {'label': 'Hired', 'count': '8', 'icon': LucideIcons.userCheck, 'color': Colors.teal},
+      {'label': 'Shortlist', 'count': '16', 'icon': LucideIcons.bookmark, 'color': Colors.amber},
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenWidth = constraints.maxWidth;
+        final crossAxisCount = screenWidth > 600 ? 7 : 4;
+        
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(), // Disable all scrolling/stretching
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+            childAspectRatio: 0.9, // Nearly square for balance
+          ),
+          itemCount: statusOptions.length,
+          itemBuilder: (context, index) {
+            final status = statusOptions[index];
             final isSelected = _selectedTab == index;
             return InkWell(
               onTap: () => setState(() => _selectedTab = index),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: isSelected ? AppColors.primary : Colors.transparent,
-                      width: 2,
-                    ),
+                  color: isSelected ? Colors.white : Colors.white.withOpacity(0.7),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isSelected ? Colors.deepPurple : const Color(0xFFE2E8F0),
+                    width: isSelected ? 1.5 : 1.0,
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: isSelected 
+                        ? Colors.deepPurple.withOpacity(0.05) 
+                        : Colors.black.withOpacity(0.01),
+                      blurRadius: 5,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
-                child: Row(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
+                    Icon(status['icon'], color: status['color'], size: 14),
+                    const SizedBox(height: 6),
                     Text(
-                      _tabs[index],
+                      status['label'],
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                        color: isSelected ? AppColors.primary : const Color(0xFF64748B),
+                        fontSize: 9,
+                        fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                        color: isSelected ? const Color(0xFF1E293B) : const Color(0xFF64748B),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: isSelected ? AppColors.primary.withOpacity(0.1) : const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        '0',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: isSelected ? AppColors.primary : const Color(0xFF64748B),
-                        ),
+                    const SizedBox(height: 1),
+                    Text(
+                      status['count'],
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: isSelected ? Colors.deepPurple : const Color(0xFF334155),
                       ),
                     ),
                   ],
                 ),
               ),
             );
-          }),
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildFilterSection(bool isDesktop) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _buildFilterDropdown(
+                icon: LucideIcons.briefcase,
+                label: 'Job',
+                value: _selectedJob,
+                items: _jobOptions,
+                onChanged: (val) => setState(() => _selectedJob = val!),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _buildFilterDropdown(
+                icon: LucideIcons.listFilter,
+                label: 'Sort by',
+                value: _selectedSort,
+                items: _sortOptions,
+                onChanged: (val) => setState(() => _selectedSort = val!),
+              ),
+            ),
+          ],
         ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: const TextField(
+                  decoration: InputDecoration(
+                    hintText: 'Search candidates...',
+                    hintStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 15),
+                    prefixIcon: Icon(LucideIcons.search, size: 20, color: Color(0xFF64748B)),
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: const Icon(LucideIcons.slidersHorizontal, color: Colors.deepPurple, size: 24),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFilterDropdown({
+    required IconData icon,
+    required String label,
+    required String value,
+    required List<String> items,
+    required ValueChanged<String?> onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.deepPurple, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8), fontWeight: FontWeight.w600),
+                ),
+                DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: value,
+                    isExpanded: true,
+                    isDense: true,
+                    icon: const Icon(LucideIcons.chevronDown, size: 16, color: Color(0xFF64748B)),
+                    items: items.map((String item) {
+                      return DropdownMenuItem<String>(
+                        value: item,
+                        child: Text(
+                          item,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 14, color: Color(0xFF1E293B), fontWeight: FontWeight.w700),
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: onChanged,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildTopFilters(bool isDesktop) {
-    if (!isDesktop) {
-      return Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: _buildRealDropdown(
-                  label: 'Job:',
-                  value: _selectedJob,
-                  items: _jobOptions,
-                  onChanged: (val) => setState(() => _selectedJob = val!),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildRealDropdown(
-                  label: 'Sort:',
-                  value: _selectedSort,
-                  items: _sortOptions,
-                  onChanged: (val) => setState(() => _selectedSort = val!),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            decoration: InputDecoration(
-              hintText: 'Search candidates...',
-              prefixIcon: const Icon(LucideIcons.search, size: 18, color: Colors.black45),
-              fillColor: Colors.white,
-              filled: true,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.shade200),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.shade200),
-              ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 0),
-            ),
-          ),
-        ],
-      );
-    }
+  Widget _buildUpgradeCardContent() {
+    return Container(); // No longer used as it was merged into _buildUpgradeCard
+  }
 
-    return Row(
-      children: [
-        _buildRealDropdown(
-          label: 'Job:',
-          value: _selectedJob,
-          items: _jobOptions,
-          onChanged: (val) => setState(() => _selectedJob = val!),
-        ),
-        const SizedBox(width: 16),
-        _buildRealDropdown(
-          label: 'Sort by:',
-          value: _selectedSort,
-          items: _sortOptions,
-          onChanged: (val) => setState(() => _selectedSort = val!),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: TextField(
-            decoration: InputDecoration(
-              hintText: 'Search name, email, skills...',
-              prefixIcon: const Icon(LucideIcons.search, size: 18, color: Colors.black45),
-              fillColor: Colors.white,
-              filled: true,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.shade200),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.shade200),
-              ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 0),
-            ),
-          ),
-        ),
-        const SizedBox(width: 16),
-        _buildIconButton(LucideIcons.filter, 'Filters'),
-        const SizedBox(width: 8),
-        _buildIconButton(LucideIcons.layoutGrid, null),
-        const SizedBox(width: 8),
-        _buildIconButton(LucideIcons.list, null, isActive: true),
-      ],
-    );
+  Widget _buildTabs() {
+    return Container(); // No longer used as it was replaced by _buildStatusCards
+  }
+
+  Widget _buildTopFilters(bool isDesktop) {
+    return Container(); // No longer used as it was replaced by _buildFilterSection
   }
 
   Widget _buildRealDropdown({
@@ -320,76 +472,163 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
     required List<String> items,
     required ValueChanged<String?> onChanged,
   }) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 14, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
-        ),
-        const SizedBox(width: 8),
-        Flexible(
-          child: Container(
-            height: 40,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: value,
-                isExpanded: true,
-                icon: const Icon(LucideIcons.chevronDown, size: 16, color: Color(0xFF64748B)),
-                items: items.map((String item) {
-                  return DropdownMenuItem<String>(
-                    value: item,
-                    child: Text(
-                      item,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 13, color: Color(0xFF1E293B), fontWeight: FontWeight.w500),
-                    ),
-                  );
-                }).toList(),
-                onChanged: onChanged,
-                borderRadius: BorderRadius.circular(12),
-                dropdownColor: Colors.white,
-                elevation: 4,
-                style: const TextStyle(fontSize: 13, color: Color(0xFF1E293B)),
-              ),
-            ),
-          ),
-        ),
-      ],
+    return Container(); // No longer used
+  }
+
+  Widget _buildCandidateList() {
+    final isDesktop = MediaQuery.of(context).size.width > 1024;
+    if (_candidates.isEmpty) {
+      return _buildEmptyState();
+    }
+
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _candidates.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 16),
+      itemBuilder: (context, index) {
+        return _buildCandidateCard(_candidates[index], isDesktop);
+      },
     );
   }
 
-  Widget _buildDropdown(String label, String value) {
-    return Container(); // Obsolete, replaced by _buildRealDropdown
-  }
-
-  Widget _buildIconButton(IconData icon, String? label, {bool isActive = false}) {
+  Widget _buildCandidateCard(Map<String, dynamic> candidate, bool isDesktop) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isActive ? AppColors.primary : Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: isActive ? AppColors.primary : Colors.grey.shade200),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: Row(
+      child: Column(
         children: [
-          Icon(icon, size: 18, color: isActive ? Colors.white : Colors.black54),
-          if (label != null) ...[
-            const SizedBox(width: 8),
-            Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isActive ? Colors.white : Colors.black)),
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 28,
+                backgroundImage: NetworkImage(candidate['image']),
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            candidate['name'],
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF1E293B),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        _buildStatusBadge(candidate['status']),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${candidate['role']} • ${candidate['experience']}',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF64748B),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (isDesktop) ...[
+                const SizedBox(width: 16),
+                Row(
+                  children: [
+                    _buildActionButton(LucideIcons.eye, 'View', Colors.grey.shade100, const Color(0xFF64748B)),
+                    const SizedBox(width: 12),
+                    _buildActionButton(LucideIcons.mail, 'Contact', AppColors.primary.withOpacity(0.1), AppColors.primary),
+                  ],
+                ),
+              ],
+            ],
+          ),
+          if (!isDesktop) ...[
+            const SizedBox(height: 16),
+            const Divider(height: 1, color: Color(0xFFF1F5F9)),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildActionButton(LucideIcons.eye, 'View', Colors.grey.shade100, const Color(0xFF64748B)),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildActionButton(LucideIcons.mail, 'Contact', AppColors.primary.withOpacity(0.1), AppColors.primary),
+                ),
+              ],
+            ),
           ],
         ],
       ),
     );
   }
 
+  Widget _buildStatusBadge(String status) {
+    final bool isNew = status == 'New';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: isNew ? const Color(0xFFEEF2FF) : const Color(0xFFECFDF5),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        status,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: isNew ? AppColors.primary : const Color(0xFF059669),
+        ),
+      ),
+    );
+  }
 
+  Widget _buildActionButton(IconData icon, String label, Color bgColor, Color textColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 16, color: textColor),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              label,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: textColor,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildEmptyState() {
     return Container(
@@ -397,7 +636,7 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
       padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFF1F5F9)),
       ),
       child: Column(

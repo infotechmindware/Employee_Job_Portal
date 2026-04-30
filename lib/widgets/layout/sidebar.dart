@@ -29,29 +29,34 @@ class _SidebarState extends ConsumerState<Sidebar> {
     final activeIndex = navState.activeIndex;
 
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          right: BorderSide(color: Colors.grey.shade100, width: 1),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFF7C3AED), // Violet 600
+            Color(0xFF6366F1), // Indigo 500
+          ],
         ),
       ),
       child: Column(
         children: [
-          const SizedBox(height: 48),
-          _buildUserTop(context),
+          const SizedBox(height: 20),
+          _buildBrandHeader(context),
+          const SizedBox(height: 24),
+          if (!widget.isCollapsed) _buildCreateNewButton(),
           const SizedBox(height: 32),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16),
+              physics: const ClampingScrollPhysics(),
               children: [
-                _buildSectionTitle('MAIN MENU'),
-                _buildMenuItem(context, ref, 0, 'Dashboard', LucideIcons.layoutDashboard, isActive: activeIndex == 0),
-                _buildMenuItem(context, ref, 1, 'Candidates', LucideIcons.users, isActive: activeIndex == 1),
-                _buildMenuItem(context, ref, 2, 'Jobs', LucideIcons.briefcase, isActive: activeIndex == 2),
+                _buildMenuItem(context, ref, 0, 'Dashboard', LucideIcons.home, isActive: activeIndex == 0),
+                _buildMenuItem(context, ref, 1, 'Jobs', LucideIcons.briefcase, isActive: activeIndex == 1),
+                _buildMenuItem(context, ref, 2, 'Candidates', LucideIcons.users, isActive: activeIndex == 2),
                 _buildMenuItem(context, ref, 3, 'Interviews', LucideIcons.calendar, isActive: activeIndex == 3),
-                const SizedBox(height: 24),
+                _buildMenuItem(context, ref, 5, 'Messages', LucideIcons.messageCircle, isActive: activeIndex == 5),
                 _buildMenuItem(context, ref, 4, 'Analytics', LucideIcons.barChart3, isActive: activeIndex == 4),
-                _buildMenuItem(context, ref, 5, 'Messaging', LucideIcons.messageSquare, isActive: activeIndex == 5),
                 _buildExpandableMenuItem(
                   context,
                   ref,
@@ -70,51 +75,84 @@ class _SidebarState extends ConsumerState<Sidebar> {
                   ],
                   isActive: activeIndex == 6 || (activeIndex >= 61 && activeIndex <= 64) || activeIndex == 8,
                 ),
-                const SizedBox(height: 12),
-                _buildSpecialMenuItem(context, ref, 8, 'Subscription Plans', LucideIcons.sparkles, isActive: activeIndex == 8),
+                _buildMenuItem(context, ref, 8, 'Subscription Plans', LucideIcons.sparkles, isActive: activeIndex == 8),
                 _buildMenuItem(context, ref, 7, 'Settings', LucideIcons.settings, isActive: activeIndex == 7),
               ],
             ),
           ),
-          const Divider(height: 1, color: Color(0xFFF1F5F9), indent: 24, endIndent: 24),
           _buildLogoutButton(context),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
         ],
       ),
     );
   }
 
-  Widget _buildLogoutButton(BuildContext context) {
+  Widget _buildBrandHeader(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(16),
-      child: InkWell(
-        onTap: () {
-          Navigator.of(context).pushReplacementNamed('/login');
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(LucideIcons.menu, size: 20, color: Color(0xFF6366F1)),
           ),
-          child: Row(
-            children: [
-              const Icon(
-                LucideIcons.logOut,
-                size: 20,
-                color: AppColors.error,
+          if (!widget.isCollapsed) ...[
+            const SizedBox(width: 16),
+            const Text(
+              'Mindware',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+                letterSpacing: -0.5,
               ),
-              if (!widget.isCollapsed) ...[
-                const SizedBox(width: 12),
-                const Text(
-                  'Logout',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.error,
-                  ),
+            ),
+          ],
+          if (widget.showCloseButton) ...[
+            const Spacer(),
+            IconButton(
+              onPressed: () => Navigator.of(context).pop(),
+              icon: const Icon(LucideIcons.x, size: 20, color: Colors.white70),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCreateNewButton() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        width: double.infinity,
+        height: 52,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4)),
+          ],
+        ),
+        child: InkWell(
+          onTap: () {},
+          borderRadius: BorderRadius.circular(12),
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(LucideIcons.plus, size: 20, color: Color(0xFF6366F1)),
+              SizedBox(width: 10),
+              Text(
+                'Create New',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF6366F1),
                 ),
-              ],
+              ),
             ],
           ),
         ),
@@ -122,64 +160,37 @@ class _SidebarState extends ConsumerState<Sidebar> {
     );
   }
 
-  Widget _buildUserTop(BuildContext context) {
-    if (widget.isCollapsed) {
-      return CircleAvatar(
-        radius: 20,
-        backgroundColor: const Color(0xFFEDE9FE),
-        child: const Text('AD', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF6366F1))),
-      );
-    }
-
+  Widget _buildMenuItem(BuildContext context, WidgetRef ref, int index, String title, IconData icon, {bool isActive = false}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 24,
-            backgroundColor: const Color(0xFFEDE9FE),
-            child: const Text('AD', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF6366F1))),
+      padding: const EdgeInsets.only(bottom: 6),
+      child: InkWell(
+        onTap: () => ref.read(navigationProvider.notifier).setIndex(index),
+        borderRadius: BorderRadius.circular(14),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: isActive ? Colors.white.withOpacity(0.2) : Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
           ),
-          const SizedBox(width: 16),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Admin User',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
-                ),
-                Text(
-                  'Super Admin',
-                  style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+          child: Row(
+            children: [
+              Icon(icon, size: 20, color: isActive ? Colors.white : Colors.white.withOpacity(0.7)),
+              if (!widget.isCollapsed) ...[
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                      color: isActive ? Colors.white : Colors.white.withOpacity(0.7),
+                    ),
+                  ),
                 ),
               ],
-            ),
+            ],
           ),
-          if (widget.showCloseButton)
-            IconButton(
-              onPressed: () => Navigator.of(context).pop(),
-              icon: const Icon(LucideIcons.x, size: 20, color: Color(0xFF94A3B8)),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
-    if (widget.isCollapsed) return const Divider();
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
-          color: Color(0xFF94A3B8),
-          letterSpacing: 1.2,
         ),
       ),
     );
@@ -203,38 +214,35 @@ class _SidebarState extends ConsumerState<Sidebar> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.only(bottom: 4),
+          padding: const EdgeInsets.only(bottom: 6),
           child: InkWell(
             onTap: onToggle,
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            borderRadius: BorderRadius.circular(14),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
-                color: isActive ? const Color(0xFFF5F3FF) : Colors.transparent,
-                borderRadius: BorderRadius.circular(12),
+                color: isActive ? Colors.white.withOpacity(0.15) : Colors.transparent,
+                borderRadius: BorderRadius.circular(14),
               ),
               child: Row(
                 children: [
-                  Icon(
-                    icon,
-                    size: 20,
-                    color: isActive ? const Color(0xFF6366F1) : const Color(0xFF64748B),
-                  ),
-                  const SizedBox(width: 12),
+                  Icon(icon, size: 20, color: isActive ? Colors.white : Colors.white.withOpacity(0.7)),
+                  const SizedBox(width: 14),
                   Expanded(
                     child: Text(
                       title,
                       style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-                        color: isActive ? const Color(0xFF6366F1) : const Color(0xFF64748B),
+                        fontSize: 15,
+                        fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                        color: isActive ? Colors.white : Colors.white.withOpacity(0.7),
                       ),
                     ),
                   ),
                   Icon(
                     isExpanded ? LucideIcons.chevronDown : LucideIcons.chevronRight,
                     size: 16,
-                    color: const Color(0xFF94A3B8),
+                    color: Colors.white54,
                   ),
                 ],
               ),
@@ -242,8 +250,14 @@ class _SidebarState extends ConsumerState<Sidebar> {
           ),
         ),
         if (isExpanded)
-          Padding(
-            padding: const EdgeInsets.only(left: 32),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(14),
+            ),
             child: Column(children: children),
           ),
       ],
@@ -252,23 +266,23 @@ class _SidebarState extends ConsumerState<Sidebar> {
 
   Widget _buildSubMenuItem(BuildContext context, WidgetRef ref, int index, String title, bool isActive) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       child: InkWell(
         onTap: () => ref.read(navigationProvider.notifier).setIndex(index),
         borderRadius: BorderRadius.circular(8),
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
-            color: isActive ? const Color(0xFFF5F3FF) : Colors.transparent,
+            color: isActive ? Colors.white.withOpacity(0.1) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
             title,
             style: TextStyle(
               fontSize: 13,
-              fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-              color: isActive ? const Color(0xFF6366F1) : const Color(0xFF64748B),
+              fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+              color: isActive ? Colors.white : Colors.white.withOpacity(0.6),
             ),
           ),
         ),
@@ -276,89 +290,27 @@ class _SidebarState extends ConsumerState<Sidebar> {
     );
   }
 
-  Widget _buildSpecialMenuItem(BuildContext context, WidgetRef ref, int index, String title, IconData icon, {bool isActive = false}) {
+  Widget _buildLogoutButton(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(16),
       child: InkWell(
-        onTap: () {
-          ref.read(navigationProvider.notifier).setIndex(index);
-        },
+        onTap: () => Navigator.of(context).pushReplacementNamed('/login'),
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            color: isActive ? const Color(0xFF6366F1).withOpacity(0.1) : const Color(0xFFF5F3FF),
-            borderRadius: BorderRadius.circular(12),
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
-              Icon(
-                icon,
-                size: 20,
-                color: const Color(0xFF6366F1),
-              ),
+              const Icon(LucideIcons.logOut, size: 20, color: Colors.white70),
               if (!widget.isCollapsed) ...[
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF6366F1),
-                    ),
+                const SizedBox(width: 14),
+                const Text(
+                  'Logout',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white70,
                   ),
                 ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMenuItem(BuildContext context, WidgetRef ref, int index, String title, IconData icon, {bool isActive = false}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: InkWell(
-        onTap: () {
-          ref.read(navigationProvider.notifier).setIndex(index);
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          decoration: BoxDecoration(
-            color: isActive ? const Color(0xFFF5F3FF) : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                icon,
-                size: 20,
-                color: isActive ? const Color(0xFF6366F1) : const Color(0xFF64748B),
-              ),
-              if (!widget.isCollapsed) ...[
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-                      color: isActive ? const Color(0xFF6366F1) : const Color(0xFF64748B),
-                    ),
-                  ),
-                ),
-                if (isActive)
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF6366F1), // Indigo indicator
-                      shape: BoxShape.circle,
-                    ),
-                  ),
               ],
             ],
           ),

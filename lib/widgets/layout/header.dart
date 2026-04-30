@@ -14,8 +14,10 @@ class Header extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDesktop = MediaQuery.of(context).size.width > 1024;
+
     return Container(
-      height: 72,
+      height: 80,
       padding: const EdgeInsets.symmetric(horizontal: 24),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -27,11 +29,60 @@ class Header extends ConsumerWidget {
         children: [
           IconButton(
             onPressed: onMenuPressed,
-            icon: const Icon(LucideIcons.menu, color: AppColors.textSecondary),
+            icon: const Icon(LucideIcons.menu, color: Color(0xFF64748B), size: 20),
           ),
-          const Spacer(),
-          // User Profile Dropdown
+          const SizedBox(width: 16),
+          if (isDesktop) ...[
+            Expanded(
+              flex: 2,
+              child: _buildSearchBar(),
+            ),
+            const Spacer(),
+            _buildDateFilter(),
+            const SizedBox(width: 24),
+          ],
+          if (!isDesktop) const Spacer(),
           _buildProfileDropdown(context, ref),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      height: 44,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const TextField(
+        decoration: InputDecoration(
+          hintText: 'Search candidates, jobs, or keywords...',
+          hintStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+          prefixIcon: Icon(LucideIcons.search, color: Color(0xFF94A3B8), size: 18),
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(vertical: 11),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDateFilter() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: const Row(
+        children: [
+          Icon(LucideIcons.calendar, size: 16, color: Color(0xFF64748B)),
+          SizedBox(width: 8),
+          Text(
+            'Apr 30, 2026',
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+          ),
         ],
       ),
     );
@@ -64,44 +115,43 @@ class Header extends ConsumerWidget {
             break;
         }
       },
-      itemBuilder: (context) => [
-        _buildPopupItem('Your Profile', LucideIcons.user, 'profile'),
-        _buildPopupItem('Company Profile', LucideIcons.building, 'company'),
-        _buildPopupItem('Documents', LucideIcons.fileText, 'documents'),
-        _buildPopupItem('Settings', LucideIcons.settings, 'settings'),
-        _buildPopupItem('Email Notifications', LucideIcons.mail, 'notifications'),
-        const PopupMenuDivider(),
-        _buildPopupItem('Sign out', LucideIcons.logOut, 'signout', isDestructive: true),
-      ],
       child: Row(
         children: [
           const Text(
-            'Mindware info tech sd',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+            'Mindware info tech',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
           ),
-          const SizedBox(width: 8),
-          const Icon(LucideIcons.chevronDown, size: 16, color: Color(0xFF94A3B8)),
           const SizedBox(width: 12),
           Container(
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: const Color(0xFFEDE9FE),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF6366F1), Color(0xFF7C3AED)],
+              ),
               shape: BoxShape.circle,
               border: Border.all(color: Colors.white, width: 2),
               boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2)),
+                BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 2)),
               ],
             ),
             child: const Center(
               child: Text(
                 'M',
-                style: TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.bold),
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900),
               ),
             ),
           ),
         ],
       ),
+      itemBuilder: (context) => [
+        _buildPopupItem('Your Profile', LucideIcons.user, 'profile'),
+        _buildPopupItem('Company Profile', LucideIcons.building, 'company'),
+        _buildPopupItem('Documents', LucideIcons.fileText, 'documents'),
+        _buildPopupItem('Settings', LucideIcons.settings, 'settings'),
+        const PopupMenuDivider(),
+        _buildPopupItem('Sign out', LucideIcons.logOut, 'signout', isDestructive: true),
+      ],
     );
   }
 
@@ -118,7 +168,7 @@ class Header extends ConsumerWidget {
             style: TextStyle(
               fontSize: 14,
               color: isDestructive ? AppColors.error : const Color(0xFF1E293B),
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],

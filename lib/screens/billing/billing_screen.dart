@@ -7,26 +7,51 @@ class BillingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = MediaQuery.of(context).size.width > 1024;
-    
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth > 1024;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(isDesktop ? 24 : 16),
+        physics: const ClampingScrollPhysics(),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Billing Overview',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
-            ),
-            const SizedBox(height: 24),
+            _buildHeader(isDesktop),
+            const SizedBox(height: 32),
             _buildTopStats(isDesktop),
-            const SizedBox(height: 24),
-            _buildMainGrid(isDesktop),
+            const SizedBox(height: 32),
+            _buildMainContent(isDesktop),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildHeader(bool isDesktop) {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Billing Overview',
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF1E293B),
+            letterSpacing: -1,
+          ),
+        ),
+        SizedBox(height: 4),
+        Text(
+          'Manage your subscriptions, usage, and payments',
+          style: TextStyle(
+            fontSize: 14,
+            color: Color(0xFF64748B),
+            fontWeight: FontWeight.w400,
+          ),
+        ),
+      ],
     );
   }
 
@@ -36,35 +61,37 @@ class BillingScreen extends StatelessWidget {
         'title': 'Current Plan',
         'value': 'Free',
         'subtitle': 'Renewal: —',
-        'action': 'Manage plan',
-        'isButton': true,
+        'icon': LucideIcons.layers,
+        'color': const Color(0xFF6366F1),
+        'hasAction': true,
       },
       {
         'title': 'Balance Due',
         'value': '₹0.00',
-        'subtitle': 'View invoices',
-        'isLink': true,
+        'subtitle': 'No pending payments',
+        'icon': LucideIcons.wallet,
+        'color': const Color(0xFF10B981),
       },
       {
-        'title': 'Upcoming Payment',
-        'value': '₹—',
-        'subtitle': 'On —',
-      },
-      {
-        'title': 'Last Payment',
-        'value': '₹—',
-        'subtitle': '—',
+        'title': 'Usage Limits',
+        'value': '0%',
+        'subtitle': 'Contacts: 0/0',
+        'icon': LucideIcons.barChart2,
+        'color': const Color(0xFFF59E0B),
       },
     ];
 
     if (!isDesktop) {
-      return SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: stats.map((stat) => Padding(
+      return SizedBox(
+        height: 140,
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          itemCount: stats.length,
+          itemBuilder: (context, index) => Padding(
             padding: const EdgeInsets.only(right: 16),
-            child: _buildInfoCard(stat, 200),
-          )).toList(),
+            child: _buildInfoCard(stats[index], 240),
+          ),
         ),
       );
     }
@@ -85,55 +112,45 @@ class BillingScreen extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFF1F5F9)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            stat['title'] as String,
-            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                stat['title'] as String,
+                style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+              ),
+              Icon(stat['icon'] as IconData, size: 16, color: stat['color'] as Color),
+            ],
           ),
-          const SizedBox(height: 8),
+          const Spacer(),
           Text(
             stat['value'] as String,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: stat['color'] as Color),
           ),
           const SizedBox(height: 4),
-          if (stat['isLink'] == true)
-            InkWell(
-              onTap: () {},
-              child: Text(
-                stat['subtitle'] as String,
-                style: const TextStyle(fontSize: 12, color: AppColors.primary, decoration: TextDecoration.underline),
-              ),
-            )
-          else
-            Text(
-              stat['subtitle'] as String,
-              style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
-            ),
-          if (stat['isButton'] == true) ...[
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {},
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                elevation: 0,
-              ),
-              child: Text(stat['action'] as String, style: const TextStyle(fontSize: 12)),
-            ),
-          ],
+          Text(
+            stat['subtitle'] as String,
+            style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildMainGrid(bool isDesktop) {
+  Widget _buildMainContent(bool isDesktop) {
     if (!isDesktop) {
       return Column(
         children: [
@@ -159,34 +176,69 @@ class BillingScreen extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFF1F5F9)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Recent Transactions',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+          const Row(
+            children: [
+              Icon(LucideIcons.receipt, size: 20, color: Color(0xFF6366F1)),
+              SizedBox(width: 12),
+              Text(
+                'Recent Transactions',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+              ),
+            ],
           ),
-          const SizedBox(height: 32),
-          const Text(
-            "You don't have any payments yet.",
-            style: TextStyle(fontSize: 14, color: Color(0xFF64748B)),
-          ),
-          InkWell(
-            onTap: () {},
-            child: const Text(
-              'Buy a plan',
-              style: TextStyle(fontSize: 14, color: AppColors.primary, fontWeight: FontWeight.w600),
+          const SizedBox(height: 48),
+          Center(
+            child: Column(
+              children: [
+                Icon(LucideIcons.history, size: 48, color: const Color(0xFFCBD5E1).withOpacity(0.5)),
+                const SizedBox(height: 16),
+                const Text(
+                  "No payment history found",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF64748B)),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  "Get started by choosing a premium plan for your business.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+                ),
+                const SizedBox(height: 24),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: [Color(0xFF6366F1), Color(0xFF4F46E5)]),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Text(
+                    'Upgrade Now',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 32),
-          Row(
+          const SizedBox(height: 48),
+          const Divider(color: Color(0xFFF1F5F9)),
+          const SizedBox(height: 24),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
             children: [
-              _buildTransactionButton('View all invoices'),
-              const SizedBox(width: 12),
-              _buildTransactionButton('View all transactions'),
+              _buildActionButton('View all invoices', LucideIcons.fileText),
+              _buildActionButton('View all transactions', LucideIcons.list),
             ],
           ),
         ],
@@ -194,16 +246,24 @@ class BillingScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTransactionButton(String label) {
+  Widget _buildActionButton(String label, IconData icon) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(8),
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
-      child: Text(
-        label,
-        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: const Color(0xFF64748B)),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF475569)),
+          ),
+        ],
       ),
     );
   }
@@ -213,68 +273,80 @@ class BillingScreen extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Alerts',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+          'Priority Alerts',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
         ),
         const SizedBox(height: 16),
         _buildAlertItem(
           'Payment failed last time',
-          'Retry payment',
-          const Color(0xFFFFFBEB),
-          const Color(0xFFB45309),
+          'Retry',
+          const Color(0xFFFEF2F2),
+          const Color(0xFFEF4444),
+          LucideIcons.alertCircle,
         ),
         const SizedBox(height: 12),
         _buildAlertItem(
           'No valid payment method',
-          'Add card',
-          const Color(0xFFFEF2F2),
-          const Color(0xFFB91C1C),
-        ),
-        const SizedBox(height: 12),
-        _buildAlertItem(
-          'Quota left Contacts: 0/0',
-          null,
-          const Color(0xFFF0F9FF),
-          const Color(0xFF0369A1),
+          'Add',
+          const Color(0xFFFFFBEB),
+          const Color(0xFFF59E0B),
+          LucideIcons.creditCard,
         ),
         const SizedBox(height: 24),
-        SizedBox(
+        Container(
           width: double.infinity,
-          child: ElevatedButton(
-            onPressed: () {},
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              elevation: 0,
+          height: 52,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.2)),
+          ),
+          child: Center(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(LucideIcons.settings, size: 16, color: const Color(0xFF6366F1)),
+                const SizedBox(width: 8),
+                const Text(
+                  'Update Billing Info',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF6366F1)),
+                ),
+              ],
             ),
-            child: const Text('Update billing information', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildAlertItem(String text, String? action, Color bg, Color textCol) {
+  Widget _buildAlertItem(String text, String? action, Color bg, Color textCol, IconData icon) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: textCol.withOpacity(0.1)),
+      ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          Icon(icon, size: 18, color: textCol),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               text,
-              style: TextStyle(fontSize: 13, color: textCol, fontWeight: FontWeight.w500),
+              style: TextStyle(fontSize: 13, color: textCol, fontWeight: FontWeight.w600),
             ),
           ),
           if (action != null)
-            InkWell(
-              onTap: () {},
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: textCol.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(6),
+              ),
               child: Text(
                 action,
-                style: TextStyle(fontSize: 13, color: textCol, fontWeight: FontWeight.bold, decoration: TextDecoration.underline),
+                style: TextStyle(fontSize: 11, color: textCol, fontWeight: FontWeight.w800),
               ),
             ),
         ],

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../theme/app_colors.dart';
+import 'subscription_dashboard_screen.dart';
+import '../../widgets/subscription/payment_modal.dart';
 
 class SubscriptionPlansScreen extends StatefulWidget {
   const SubscriptionPlansScreen({super.key});
@@ -13,6 +15,24 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
   int _selectedBillingCycle = 0; // 0: Monthly, 1: Quarterly, 2: Annual
   int _selectedGateway = 0; // 0: Razorpay, 1: Cashfree
   String _selectedPlan = 'Premium';
+  final FocusNode _promoFocusNode = FocusNode();
+  bool _isPromoFocused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _promoFocusNode.addListener(() {
+      setState(() {
+        _isPromoFocused = _promoFocusNode.hasFocus;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _promoFocusNode.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,8 +80,11 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 8)),
+        ],
       ),
       child: Column(
         children: [
@@ -69,15 +92,17 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
             'SELECT BILLING CYCLE',
             style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8), letterSpacing: 1),
           ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              _buildCycleButton(0, 'Monthly', null),
-              const SizedBox(width: 8),
-              _buildCycleButton(1, 'Quarterly', 'Save 10%'),
-              const SizedBox(width: 8),
-              _buildCycleButton(2, 'Annual', 'Save 20%'),
-            ],
+          const SizedBox(height: 20),
+          IntrinsicHeight(
+            child: Row(
+              children: [
+                _buildCycleButton(0, 'Monthly', ''),
+                const SizedBox(width: 12),
+                _buildCycleButton(1, 'Quarterly', 'Save 10%'),
+                const SizedBox(width: 12),
+                _buildCycleButton(2, 'Annual', 'Save 20%'),
+              ],
+            ),
           ),
           const SizedBox(height: 32),
           const Text(
@@ -98,36 +123,44 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
     );
   }
 
-  Widget _buildCycleButton(int index, String title, String? subtitle) {
+  Widget _buildCycleButton(int index, String title, String subtitle) {
     final isSelected = _selectedBillingCycle == index;
     return Expanded(
       child: InkWell(
         onTap: () => setState(() => _selectedBillingCycle = index),
+        borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
           decoration: BoxDecoration(
             color: isSelected ? const Color(0xFF2563EB) : Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFE2E8F0)),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFE2E8F0),
+              width: 1.5,
+            ),
           ),
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
                 title,
+                textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
                   color: isSelected ? Colors.white : const Color(0xFF1E293B),
                 ),
               ),
-              if (subtitle != null)
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: isSelected ? Colors.white.withOpacity(0.8) : const Color(0xFF94A3B8),
-                  ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: isSelected ? Colors.white.withOpacity(0.9) : const Color(0xFF94A3B8),
                 ),
+              ),
             ],
           ),
         ),
@@ -190,20 +223,41 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
           Row(
             children: [
               Expanded(
-                child: Container(
-                  height: 44,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeInOut,
+                  height: 48,
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: const TextField(
-                    decoration: InputDecoration(
-                      hintText: 'Enter promo code',
-                      hintStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
-                      border: InputBorder.none,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: _isPromoFocused ? const Color(0xFF6366F1) : const Color(0xFFD1D5DB),
+                      width: 1.2,
                     ),
+                    boxShadow: _isPromoFocused
+                        ? [
+                            BoxShadow(
+                              color: const Color(0xFF6366F1).withOpacity(0.15),
+                              blurRadius: 0,
+                              spreadRadius: 3,
+                            )
+                          ]
+                        : [],
+                  ),
+                  child: TextField(
+                    focusNode: _promoFocusNode,
+                    decoration: const InputDecoration(
+                      hintText: 'Enter promo code',
+                      hintStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 14, fontWeight: FontWeight.w500),
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      errorBorder: InputBorder.none,
+                      disabledBorder: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 16),
+                      filled: false,
+                    ),
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
                   ),
                 ),
               ),
@@ -231,23 +285,19 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
       {
         'title': 'Free',
         'desc': 'Perfect for startups and small businesses',
-        'price': '0',
       },
       {
         'title': 'Basic',
         'desc': 'Essential features for growing businesses',
-        'price': '400',
       },
       {
         'title': 'Premium',
         'desc': 'Advanced features for established companies',
-        'price': '850',
         'isPopular': true,
       },
       {
         'title': 'Enterprise',
         'desc': 'Custom solutions for large organizations',
-        'price': '1,650',
       },
     ];
 
@@ -283,6 +333,38 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
     );
   }
 
+  String _getPrice(String title) {
+    if (title == 'Free') return '0';
+    
+    switch (_selectedBillingCycle) {
+      case 0: // Monthly
+        if (title == 'Basic') return '400';
+        if (title == 'Premium') return '850';
+        if (title == 'Enterprise') return '1,650';
+        break;
+      case 1: // Quarterly
+        if (title == 'Basic') return '1,100';
+        if (title == 'Premium') return '2,300';
+        if (title == 'Enterprise') return '4,500';
+        break;
+      case 2: // Annual
+        if (title == 'Basic') return '4,000';
+        if (title == 'Premium') return '8,500';
+        if (title == 'Enterprise') return '16,500';
+        break;
+    }
+    return '0';
+  }
+
+  String _getCycleText() {
+    switch (_selectedBillingCycle) {
+      case 0: return ' /monthly';
+      case 1: return ' /quarterly';
+      case 2: return ' /annual';
+      default: return ' /monthly';
+    }
+  }
+
   Widget _buildPlanCard(Map<String, dynamic> p, bool isMobile) {
     final isPopular = p['isPopular'] == true;
     final isSelected = _selectedPlan == p['title'];
@@ -310,8 +392,8 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text('₹${p['price']}', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
-                  const Text(' /monthly', style: TextStyle(fontSize: 14, color: Color(0xFF64748B))),
+                  Text('₹${_getPrice(p['title'] as String)}', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+                  Text(_getCycleText(), style: const TextStyle(fontSize: 14, color: Color(0xFF64748B))),
                 ],
               ),
               const Center(
@@ -321,7 +403,27 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () => setState(() => _selectedPlan = p['title']),
+                  onPressed: () {
+                    setState(() => _selectedPlan = p['title']);
+                    
+                    if (p['title'] == 'Free') {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SubscriptionDashboardScreen(),
+                        ),
+                      );
+                    } else {
+                      showDialog(
+                        context: context,
+                        barrierDismissible: true,
+                        builder: (context) => PaymentModal(
+                          planTitle: p['title'] as String,
+                          price: _getPrice(p['title'] as String),
+                        ),
+                      );
+                    }
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: isSelected ? const Color(0xFF2563EB) : const Color(0xFF1E293B),
                     foregroundColor: Colors.white,

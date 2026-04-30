@@ -96,12 +96,14 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
             type: BottomNavigationBarType.fixed,
             selectedItemColor: AppColors.primary,
             unselectedItemColor: AppColors.textSecondary,
+            showSelectedLabels: false, // Hide selected labels
+            showUnselectedLabels: false, // Hide unselected labels
             items: const [
-              BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), label: 'Dashboard'),
-              BottomNavigationBarItem(icon: Icon(Icons.people_outline), label: 'Candidates'),
-              BottomNavigationBarItem(icon: Icon(Icons.work_outline), label: 'Jobs'),
-              BottomNavigationBarItem(icon: Icon(Icons.message_outlined), label: 'Chat'),
-              BottomNavigationBarItem(icon: Icon(Icons.bar_chart_outlined), label: 'Analytics'),
+              BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), label: ''),
+              BottomNavigationBarItem(icon: Icon(Icons.people_outline), label: ''),
+              BottomNavigationBarItem(icon: Icon(Icons.work_outline), label: ''),
+              BottomNavigationBarItem(icon: Icon(Icons.message_outlined), label: ''),
+              BottomNavigationBarItem(icon: Icon(Icons.bar_chart_outlined), label: ''),
             ],
           )
         : null,

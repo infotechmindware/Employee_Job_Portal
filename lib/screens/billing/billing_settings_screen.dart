@@ -9,20 +9,19 @@ class BillingSettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isDesktop = MediaQuery.of(context).size.width > 1024;
-    
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth > 1024;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(isDesktop ? 24 : 16),
+        physics: const ClampingScrollPhysics(),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Billing Settings',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
-            ),
-            const SizedBox(height: 24),
+            _buildHeader(isDesktop),
+            const SizedBox(height: 32),
             _buildSettingsForm(isDesktop, ref),
           ],
         ),
@@ -30,13 +29,46 @@ class BillingSettingsScreen extends ConsumerWidget {
     );
   }
 
+  Widget _buildHeader(bool isDesktop) {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Billing Settings',
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF1E293B),
+            letterSpacing: -1,
+          ),
+        ),
+        SizedBox(height: 4),
+        Text(
+          'Manage your business details and billing preferences',
+          style: TextStyle(
+            fontSize: 14,
+            color: Color(0xFF64748B),
+            fontWeight: FontWeight.w400,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildSettingsForm(bool isDesktop, WidgetRef ref) {
     return Container(
-      padding: const EdgeInsets.all(32),
+      padding: EdgeInsets.all(isDesktop ? 32 : 24),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFF1F5F9)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -44,46 +76,73 @@ class BillingSettingsScreen extends ConsumerWidget {
           Row(
             children: [
               Expanded(child: _buildField('Company', 'Mindware info tech')),
-              const SizedBox(width: 24),
+              const SizedBox(width: 16),
               Expanded(child: _buildField('Email', 'sujeet1@gmail.com')),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           _buildField('Street Address', 'Village: Karri-khurd, Post: Konar Dam, Dist: Bokaro'),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           Row(
             children: [
               Expanded(child: _buildField('City', 'Bokaro')),
-              const SizedBox(width: 24),
+              const SizedBox(width: 16),
               Expanded(child: _buildField('State', 'Jharkhand')),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           Row(
             children: [
               Expanded(child: _buildField('Country', 'India')),
-              const SizedBox(width: 24),
+              const SizedBox(width: 16),
               Expanded(child: _buildField('Postal Code', '825315')),
             ],
           ),
           const SizedBox(height: 32),
           Row(
             children: [
-              ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  elevation: 0,
+              Expanded(
+                flex: 2,
+                child: SizedBox(
+                  height: 48,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF6366F1), Color(0xFF4F46E5)],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF6366F1).withOpacity(0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: ElevatedButton(
+                      onPressed: () {},
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text(
+                        'Save Settings',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
+                      ),
+                    ),
+                  ),
                 ),
-                child: const Text('Save', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
               const SizedBox(width: 16),
-              TextButton(
-                onPressed: () => ref.read(navigationProvider.notifier).setIndex(6),
-                child: const Text('Back to Overview', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
+              Expanded(
+                child: TextButton(
+                  onPressed: () => ref.read(navigationProvider.notifier).setIndex(6),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(fontSize: 14, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+                  ),
+                ),
               ),
             ],
           ),
@@ -98,7 +157,7 @@ class BillingSettingsScreen extends ConsumerWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF6366F1), letterSpacing: 0.5),
         ),
         const SizedBox(height: 8),
         TextField(
@@ -107,8 +166,18 @@ class BillingSettingsScreen extends ConsumerWidget {
             filled: true,
             fillColor: const Color(0xFFF8FAFC),
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
+            ),
           ),
         ),
       ],

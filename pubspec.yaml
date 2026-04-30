@@ -40,6 +40,8 @@ dependencies:
   lucide_icons: ^0.257.0
   animations: ^2.2.0
   glassmorphism: ^3.0.0
+  image_picker: ^1.2.2
+  file_picker: 8.1.2
 
 dev_dependencies:
   flutter_test:
