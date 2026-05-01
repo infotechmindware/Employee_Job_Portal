@@ -111,11 +111,10 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
           ),
           const SizedBox(height: 16),
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildGatewayButton(0, 'Razorpay', LucideIcons.creditCard),
-              const SizedBox(width: 16),
-              _buildGatewayButton(1, 'Cashfree', LucideIcons.wallet),
+              Expanded(child: _buildGatewayButton(0, 'Razorpay', 'assets/images/razar.png')),
+              const SizedBox(width: 12),
+              Expanded(child: _buildGatewayButton(1, 'Cashfree', 'assets/images/cashfree.ico')),
             ],
           ),
         ],
@@ -168,27 +167,31 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
     );
   }
 
-  Widget _buildGatewayButton(int index, String title, IconData icon) {
+  Widget _buildGatewayButton(int index, String title, String assetPath) {
     final isSelected = _selectedGateway == index;
     return InkWell(
       onTap: () => setState(() => _selectedGateway = index),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFE2E8F0)),
         ),
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 16, color: isSelected ? const Color(0xFF2563EB) : const Color(0xFF64748B)),
+            Image.asset(assetPath, width: 18, height: 18, fit: BoxFit.contain),
             const SizedBox(width: 8),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: isSelected ? const Color(0xFF2563EB) : const Color(0xFF1E293B),
+            Flexible(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: isSelected ? const Color(0xFF2563EB) : const Color(0xFF1E293B),
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -301,35 +304,13 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
       },
     ];
 
-    if (!isDesktop) {
-      return Column(
-        children: plans.map((p) => Padding(
-          padding: const EdgeInsets.only(bottom: 24),
-          child: _buildPlanCard(p, true),
-        )).toList(),
-      );
-    }
-
-    return Column(
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: _buildPlanCard(plans[0], false)),
-            const SizedBox(width: 24),
-            Expanded(child: _buildPlanCard(plans[1], false)),
-            const SizedBox(width: 24),
-            Expanded(child: _buildPlanCard(plans[2], false)),
-          ],
-        ),
-        const SizedBox(height: 24),
-        Row(
-          children: [
-            Expanded(child: _buildPlanCard(plans[3], false)),
-            const Spacer(flex: 2),
-          ],
-        ),
-      ],
+    return Center(
+      child: Wrap(
+        spacing: 24,
+        runSpacing: 32,
+        alignment: WrapAlignment.center,
+        children: plans.map((p) => _buildPlanCard(p, !isDesktop)).toList(),
+      ),
     );
   }
 
@@ -373,14 +354,22 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
       clipBehavior: Clip.none,
       children: [
         Container(
-          padding: const EdgeInsets.all(32),
+          width: isMobile ? double.infinity : 260,
+          padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: isSelected || isPopular ? const Color(0xFF2563EB) : const Color(0xFFE2E8F0),
-              width: isSelected || isPopular ? 2 : 1,
+              width: isSelected || isPopular ? 1.5 : 1,
             ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.02),
+                blurRadius: 15,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
