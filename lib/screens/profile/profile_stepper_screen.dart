@@ -1,11 +1,17 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 import '../../widgets/common/image_upload_card.dart';
 import '../../providers/navigation_provider.dart';
 import '../../providers/profile_provider.dart';
 import '../../theme/app_colors.dart';
+import '../../services/auth_service.dart';
 import '../../data/location_data.dart';
 
 class ProfileStepperScreen extends ConsumerStatefulWidget {
@@ -20,7 +26,46 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
   void initState() {
     super.initState();
     _selectedCountry = 'India';
+    _companyNameController = TextEditingController();
+    _websiteController = TextEditingController();
+    _descriptionController = TextEditingController();
+    _postalController = TextEditingController();
+    _emailController = TextEditingController();
+    _addressController = TextEditingController();
+    
+    // Default to Pankaj Plaza, Dwarka coordinates for preview
+    _currentLatLng = const LatLng(28.5908, 77.0433);
+
+    // Load existing profile data
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadProfile());
   }
+
+  @override
+  void dispose() {
+    _companyNameController.dispose();
+    _websiteController.dispose();
+    _descriptionController.dispose();
+    _postalController.dispose();
+    _emailController.dispose();
+    _addressController.dispose();
+    _mapController?.dispose();
+    super.dispose();
+  }
+
+  // Location & Map states
+  LatLng? _currentLatLng;
+  GoogleMapController? _mapController;
+  bool _isLocating = false;
+  bool _isLoading = false;
+  Timer? _searchDebounce;
+
+  // Form Controllers
+  late TextEditingController _companyNameController;
+  late TextEditingController _websiteController;
+  late TextEditingController _descriptionController;
+  late TextEditingController _postalController;
+  late TextEditingController _emailController;
+  late TextEditingController _addressController;
 
   // Selection states
   String? _selectedCompanyType;
@@ -80,12 +125,12 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
   ];
 
   final List<String> _companySizes = [
-    '1-10 employees',
-    '11-50 employees',
-    '51-200 employees',
-    '201-500 employees',
-    '501-1000 employees',
-    '1000+ employees'
+    '1-10',
+    '11-50',
+    '51-200',
+    '201-500',
+    '501-1000',
+    '1000+'
   ];
   @override
   Widget build(BuildContext context) {
@@ -96,23 +141,32 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      body: SingleChildScrollView(
-        physics: const ClampingScrollPhysics(),
-        padding: EdgeInsets.all(isDesktop ? 32 : 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(isDesktop),
-            const SizedBox(height: 24),
-            _buildSuccessAlert(),
-            const SizedBox(height: 32),
-            _buildStepper(currentStep, isDesktop),
-            const SizedBox(height: 32),
-            _buildStepContent(currentStep, isDesktop),
-            const SizedBox(height: 40),
-            _buildActionButtons(currentStep, isDesktop),
-          ],
-        ),
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            padding: EdgeInsets.all(isDesktop ? 32 : 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(isDesktop),
+                const SizedBox(height: 24),
+                _buildSuccessAlert(),
+                const SizedBox(height: 32),
+                _buildStepper(currentStep, isDesktop),
+                const SizedBox(height: 32),
+                _buildStepContent(currentStep, isDesktop),
+                const SizedBox(height: 40),
+                _buildActionButtons(currentStep, isDesktop),
+              ],
+            ),
+          ),
+          if (_isLoading)
+            Container(
+              color: Colors.black12,
+              child: const Center(child: CircularProgressIndicator()),
+            ),
+        ],
       ),
     );
   }
@@ -268,11 +322,11 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
           icon: LucideIcons.building,
           children: [
             _buildResponsiveFields(isDesktop, [
-              _buildField('Company Name *', 'Mindware info tech sd'),
-              _buildField('Website', 'https://mindware.com'),
+              _buildField('Company Name *', 'Enter company name', controller: _companyNameController),
+              _buildField('Website', 'https://mindware.com', controller: _websiteController),
             ]),
             const SizedBox(height: 20),
-            _buildField('Company Description', 'Leading software solutions...', maxLines: 4),
+            _buildField('Company Description', 'Leading software solutions...', maxLines: 4, controller: _descriptionController),
             const SizedBox(height: 20),
             _buildResponsiveFields(isDesktop, [
               _buildDropdown(
@@ -353,45 +407,182 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
         ]),
         const SizedBox(height: 20),
         _buildResponsiveFields(isDesktop, [
-          _buildField('Postal Code *', 'Enter postal code'),
-          _buildField('Official Email *', 'contact@company.com'),
+          _buildField('Postal Code *', 'Enter postal code', controller: _postalController),
+          _buildField('Official Email *', 'contact@company.com', controller: _emailController),
         ]),
         const SizedBox(height: 20),
-        _buildField('Street Address *', 'Enter full street address', maxLines: 3),
+        _buildField(
+          'Street Address *', 
+          'Enter full street address', 
+          maxLines: 3, 
+          controller: _addressController,
+          onChanged: (val) => _searchLocationFromAddress(val),
+        ),
         const SizedBox(height: 24),
-        OutlinedButton.icon(
-          onPressed: () {},
-          icon: const Icon(LucideIcons.navigation, size: 16),
-          label: const Text('Use my location'),
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            side: const BorderSide(color: Color(0xFFE2E8F0)),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            foregroundColor: const Color(0xFF64748B),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _isLocating ? null : _handleUseMyLocation,
+            icon: _isLocating 
+              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Icon(LucideIcons.navigation, size: 16),
+            label: Text(_isLocating ? 'Locating...' : 'Use my location'),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              side: const BorderSide(color: Color(0xFFE2E8F0)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              foregroundColor: const Color(0xFF6366F1),
+            ),
           ),
         ),
         const SizedBox(height: 24),
         Container(
-          height: 180,
+          height: 220,
           width: double.infinity,
           decoration: BoxDecoration(
             color: const Color(0xFFF1F5F9),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
-          child: const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(LucideIcons.map, size: 32, color: Color(0xFF94A3B8)),
-                SizedBox(height: 8),
-                Text('Map Preview', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
-              ],
-            ),
-          ),
+          clipBehavior: Clip.antiAlias,
+          child: _currentLatLng == null
+              ? const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(LucideIcons.map, size: 32, color: Color(0xFF94A3B8)),
+                      SizedBox(height: 8),
+                      Text('Map Preview', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                )
+              : GoogleMap(
+                  initialCameraPosition: CameraPosition(target: _currentLatLng!, zoom: 17),
+                  onMapCreated: (controller) => _mapController = controller,
+                  onCameraMove: (position) {
+                    setState(() {
+                      _currentLatLng = position.target;
+                    });
+                  },
+                  onCameraIdle: () {
+                    if (_currentLatLng != null && !_isLocating) {
+                      _reverseGeocode(_currentLatLng!.latitude, _currentLatLng!.longitude);
+                    }
+                  },
+                  markers: {
+                    Marker(
+                      markerId: const MarkerId('current'),
+                      position: _currentLatLng!,
+                      draggable: true,
+                      onDragEnd: (newPosition) {
+                        setState(() {
+                          _currentLatLng = newPosition;
+                        });
+                        _reverseGeocode(newPosition.latitude, newPosition.longitude);
+                      },
+                    ),
+                  },
+                  myLocationEnabled: true,
+                  myLocationButtonEnabled: true,
+                  zoomControlsEnabled: true,
+                  mapType: MapType.normal,
+                ),
         ),
       ],
     );
+  }
+
+  // Bonus: Search location from typed address
+  void _searchLocationFromAddress(String address) {
+    if (_searchDebounce?.isActive ?? false) _searchDebounce!.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 800), () async {
+      if (address.length < 5) return;
+      try {
+        List<Location> locations = await locationFromAddress(address);
+        if (locations.isNotEmpty) {
+          final loc = locations.first;
+          final latLng = LatLng(loc.latitude, loc.longitude);
+          setState(() => _currentLatLng = latLng);
+          _mapController?.animateCamera(CameraUpdate.newLatLngZoom(latLng, 17));
+        }
+      } catch (e) {
+        debugPrint('Search Error: $e');
+      }
+    });
+  }
+
+  Future<void> _reverseGeocode(double lat, double lng) async {
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(lat, lng);
+      if (placemarks.isNotEmpty) {
+        final place = placemarks.first;
+        final newPostal = place.postalCode ?? '';
+        final newAddress = [
+          if (place.street != null && place.street!.isNotEmpty) place.street,
+          if (place.subLocality != null && place.subLocality!.isNotEmpty) place.subLocality,
+          if (place.locality != null && place.locality!.isNotEmpty) place.locality,
+        ].join(', ');
+
+        setState(() {
+          if (_postalController.text != newPostal) {
+            _postalController.text = newPostal;
+          }
+          if (_addressController.text != newAddress) {
+            _addressController.text = newAddress;
+          }
+          if (place.administrativeArea != null) {
+            final state = LocationData.indiaStatesAndDistricts.keys.firstWhere(
+              (s) => s.toLowerCase() == place.administrativeArea!.toLowerCase(),
+              orElse: () => _selectedState ?? '',
+            );
+            if (state.isNotEmpty) {
+              _selectedState = state;
+              final district = LocationData.indiaStatesAndDistricts[state]?.firstWhere(
+                (d) => d.toLowerCase() == (place.subAdministrativeArea ?? place.locality ?? '').toLowerCase(),
+                orElse: () => _selectedCity ?? '',
+              );
+              if (district != null && district.isNotEmpty) _selectedCity = district;
+            }
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Geocoding Error: $e');
+    }
+  }
+
+  Future<void> _handleUseMyLocation() async {
+    setState(() => _isLocating = true);
+    
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) throw 'Location services are disabled.';
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) throw 'Location permissions are denied.';
+      }
+      
+      if (permission == LocationPermission.deniedForever) throw 'Location permissions are permanently denied.';
+
+      Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      final latLng = LatLng(position.latitude, position.longitude);
+
+      setState(() {
+        _currentLatLng = latLng;
+        _isLocating = false;
+      });
+
+      _mapController?.animateCamera(CameraUpdate.newLatLngZoom(latLng, 16));
+      
+      await _reverseGeocode(position.latitude, position.longitude);
+    } catch (e) {
+      setState(() => _isLocating = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    }
   }
 
   Widget _buildDocumentsInfo(bool isDesktop) {
@@ -463,14 +654,16 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
     );
   }
 
-  Widget _buildField(String label, String hint, {int maxLines = 1}) {
+  Widget _buildField(String label, String hint, {int maxLines = 1, TextEditingController? controller, ValueChanged<String>? onChanged}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF475569))),
         const SizedBox(height: 8),
         TextField(
+          controller: controller,
           maxLines: maxLines,
+          onChanged: onChanged,
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
@@ -566,6 +759,125 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
     );
   }
 
+  Future<void> _loadProfile() async {
+    setState(() => _isLoading = true);
+    final authService = AuthService();
+    final result = await authService.getProfile();
+    
+    // DEBUG: Check if address fields exist in API response
+    debugPrint("API Profile Response: ${jsonEncode(result)}");
+    
+    if (result['success']) {
+      final data = result['data'];
+      setState(() {
+        _companyNameController.text = data['company_name'] ?? '';
+        _websiteController.text = data['website'] ?? '';
+        _descriptionController.text = data['description'] ?? '';
+        _postalController.text = data['postal_code'] ?? '';
+        _emailController.text = data['email'] ?? '';
+        _addressController.text = data['street_address'] ?? '';
+        
+        // Defensive checks for dropdown values
+        if (_companyTypes.contains(data['company_type'])) {
+          _selectedCompanyType = data['company_type'];
+        }
+        if (_industries.contains(data['industry'])) {
+          _selectedIndustry = data['industry'];
+        }
+        if (_companySizes.contains(data['company_size'])) {
+          _selectedCompanySize = data['company_size'];
+        }
+        
+        if (_countries.contains(data['country'])) {
+          _selectedCountry = data['country'];
+        } else {
+          _selectedCountry = 'India';
+        }
+
+        // Only set State if it exists in the current Country's data (if India)
+        if (_selectedCountry == 'India' && LocationData.indiaStatesAndDistricts.containsKey(data['state'])) {
+          _selectedState = data['state'];
+          // Only set City if it exists in the selected State's data
+          if (LocationData.indiaStatesAndDistricts[_selectedState!]!.contains(data['city'])) {
+            _selectedCity = data['city'];
+          }
+        }
+
+        if (data['lat'] != null && data['lng'] != null) {
+          _currentLatLng = LatLng(
+            double.tryParse(data['lat'].toString()) ?? 28.5908,
+            double.tryParse(data['lng'].toString()) ?? 77.0433,
+          );
+        }
+      });
+    }
+    setState(() => _isLoading = false);
+  }
+
+  Future<void> _submitProfile() async {
+    setState(() => _isLoading = true);
+    
+    final profileState = ref.read(profileProvider);
+    final Map<String, String> fields = {
+      'company_name': _companyNameController.text,
+      'website': _websiteController.text,
+      'description': _descriptionController.text,
+      'company_type': _selectedCompanyType ?? '',
+      'industry': _selectedIndustry ?? '',
+      'company_size': _selectedCompanySize ?? '',
+      'country': _selectedCountry ?? '',
+      'state': _selectedState ?? '',
+      'city': _selectedCity ?? '',
+      'postal_code': _postalController.text,
+      'email': _emailController.text,
+      'street_address': _addressController.text,
+      'lat': _currentLatLng?.latitude.toString() ?? '',
+      'lng': _currentLatLng?.longitude.toString() ?? '',
+    };
+
+    final Map<String, File> files = {};
+    if (profileState.businessLicense != null) files['business_license'] = profileState.businessLicense!;
+    if (profileState.gstCertificate != null) files['gst_certificate'] = profileState.gstCertificate!;
+    if (profileState.additionalProof != null) files['additional_proof'] = profileState.additionalProof!;
+
+    final result = await AuthService().updateProfile(fields, files: files);
+    
+    setState(() => _isLoading = false);
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result['message'])),
+      );
+      if (result['success']) {
+        ref.read(navigationProvider.notifier).setIndex(101); // Redirect to success/dashboard
+      }
+    }
+  }
+
+  bool _isStepValid(int step) {
+    switch (step) {
+      case 0:
+        return _companyNameController.text.isNotEmpty &&
+               _selectedCompanyType != null &&
+               _selectedIndustry != null &&
+               _selectedCompanySize != null;
+      case 1:
+        return _selectedCountry != null &&
+               _selectedState != null &&
+               _selectedCity != null &&
+               _postalController.text.isNotEmpty &&
+               _emailController.text.isNotEmpty &&
+               _addressController.text.isNotEmpty &&
+               _currentLatLng != null;
+      case 2:
+        final profileState = ref.watch(profileProvider);
+        // Requirement: At least business license and GST are usually mandatory
+        return profileState.businessLicense != null &&
+               profileState.gstCertificate != null;
+      default:
+        return false;
+    }
+  }
 
   Widget _buildResponsiveFields(bool isDesktop, List<Widget> children) {
     if (isDesktop) {
@@ -594,13 +906,13 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
               ],
             ),
             child: ElevatedButton(
-              onPressed: () {
+              onPressed: _isStepValid(currentStep) ? () {
                 if (currentStep < 2) {
                   ref.read(navigationProvider.notifier).setProfileStep(currentStep + 1);
                 } else {
-                  ref.read(navigationProvider.notifier).setIndex(101);
+                  _submitProfile();
                 }
-              },
+              } : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.transparent,
                 foregroundColor: Colors.white,
@@ -656,13 +968,13 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
               ],
             ),
             child: ElevatedButton(
-              onPressed: () {
+              onPressed: _isStepValid(currentStep) ? () {
                 if (currentStep < 2) {
                   ref.read(navigationProvider.notifier).setProfileStep(currentStep + 1);
                 } else {
-                  ref.read(navigationProvider.notifier).setIndex(101);
+                  _submitProfile();
                 }
-              },
+              } : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.transparent,
                 foregroundColor: Colors.white,

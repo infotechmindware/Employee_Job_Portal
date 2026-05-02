@@ -33,8 +33,8 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
 
   final List<Widget> _screens = [
     const DashboardScreen(),         // 0
-    const CandidatesScreen(),        // 1
-    const JobsScreen(),               // 2
+    const JobsScreen(),              // 1 (Swapped to match Sidebar index 1)
+    const CandidatesScreen(),        // 2 (Swapped to match Sidebar index 2)
     const InterviewsScreen(),        // 3
     const AnalyticsScreen(),         // 4
     const MessagingScreen(),         // 5
@@ -72,6 +72,23 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     }
   }
 
+  int _getBottomNavIndex(int activeIndex) {
+    if (activeIndex == 2) return 1; // Candidates
+    if (activeIndex == 1) return 2; // Jobs
+    if (activeIndex == 5) return 3; // Messages
+    if (activeIndex == 4) return 4; // Analytics
+    return 0; // Default Dashboard for others
+  }
+
+  void _onBottomNavTap(int index) {
+    int targetIndex = 0;
+    if (index == 1) targetIndex = 2; // Candidates
+    else if (index == 2) targetIndex = 1; // Jobs
+    else if (index == 3) targetIndex = 5; // Messages
+    else if (index == 4) targetIndex = 4; // Analytics
+    ref.read(navigationProvider.notifier).setIndex(targetIndex);
+  }
+
   @override
   Widget build(BuildContext context) {
     final navState = ref.watch(navigationProvider);
@@ -89,21 +106,19 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
         : null,
       bottomNavigationBar: !isDesktop 
         ? BottomNavigationBar(
-            currentIndex: (activeIndex < 0 || activeIndex > 4) ? 0 : activeIndex,
-            onTap: (index) {
-              ref.read(navigationProvider.notifier).setIndex(index);
-            },
+            currentIndex: _getBottomNavIndex(activeIndex),
+            onTap: _onBottomNavTap,
             type: BottomNavigationBarType.fixed,
             selectedItemColor: AppColors.primary,
             unselectedItemColor: AppColors.textSecondary,
-            showSelectedLabels: false, // Hide selected labels
-            showUnselectedLabels: false, // Hide unselected labels
+            showSelectedLabels: false,
+            showUnselectedLabels: false,
             items: const [
               BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), label: ''),
-              BottomNavigationBarItem(icon: Icon(Icons.people_outline), label: ''),
-              BottomNavigationBarItem(icon: Icon(Icons.work_outline), label: ''),
-              BottomNavigationBarItem(icon: Icon(Icons.message_outlined), label: ''),
-              BottomNavigationBarItem(icon: Icon(Icons.bar_chart_outlined), label: ''),
+              BottomNavigationBarItem(icon: Icon(Icons.people_outline), label: ''), // Candidates
+              BottomNavigationBarItem(icon: Icon(Icons.work_outline), label: ''), // Jobs
+              BottomNavigationBarItem(icon: Icon(Icons.message_outlined), label: ''), // Messages
+              BottomNavigationBarItem(icon: Icon(Icons.bar_chart_outlined), label: ''), // Analytics
             ],
           )
         : null,

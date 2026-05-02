@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'theme/app_theme.dart';
 import 'screens/auth/login_screen.dart';
+import 'screens/auth/register_screen.dart';
+import 'screens/auth/forgot_password_screen.dart';
 import 'screens/main_layout.dart';
 import 'screens/dashboard/dashboard_screen.dart';
 
@@ -28,6 +30,8 @@ class AdminApp extends StatelessWidget {
       initialRoute: '/login',
       routes: {
         '/login': (context) => const LoginScreen(),
+        '/register': (context) => const RegisterScreen(),
+        '/forgot_password': (context) => const ForgotPasswordScreen(),
         '/dashboard': (context) => const MainLayout(),
       },
     );

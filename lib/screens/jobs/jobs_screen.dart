@@ -14,14 +14,24 @@ class JobsScreen extends ConsumerStatefulWidget {
 class _JobsScreenState extends ConsumerState<JobsScreen> {
   int _selectedTab = 0;
   String _selectedStatus = 'All Status';
-  final List<String> _tabs = ['All jobs', 'Published', 'Drafts', 'Closed'];
+  final List<String> _tabs = const ['All jobs', 'Published', 'Drafts', 'Closed'];
   
-  final List<String> _statusOptions = [
+  final List<String> _statusOptions = const [
     'All Status',
     'Active',
     'Draft',
     'Closed',
   ];
+
+  late final String _dateStr;
+
+  @override
+  void initState() {
+    super.initState();
+    final expiryDate = DateTime.now().add(const Duration(days: 365));
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    _dateStr = '${months[expiryDate.month - 1]} ${expiryDate.day}, ${expiryDate.year}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -114,14 +124,9 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
   }
 
   Widget _buildPlanCard(bool isDesktop) {
-    // Dynamic date calculation (1 year from now)
-    final expiryDate = DateTime.now().add(const Duration(days: 365));
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    final dateStr = '${months[expiryDate.month - 1]} ${expiryDate.day}, ${expiryDate.year}';
-
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), // Compact padding
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: const Color(0xFFF0F7FF),
         borderRadius: BorderRadius.circular(12),
@@ -170,7 +175,7 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Expires on $dateStr',
+                  'Expires on $_dateStr',
                   style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
                 ),
               ],

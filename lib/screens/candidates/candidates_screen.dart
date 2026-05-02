@@ -11,11 +11,7 @@ class CandidatesScreen extends StatefulWidget {
 }
 
 class _CandidatesScreenState extends State<CandidatesScreen> {
-  int _selectedTab = 0;
-  String _selectedJob = 'All Jobs';
-  String _selectedSort = 'Application date (newest first)';
-
-  final List<String> _tabs = [
+  static const List<String> _tabsData = [
     'All',
     'New',
     'Contacting',
@@ -25,42 +21,66 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
     'Shortlist'
   ];
 
-  final List<String> _sortOptions = [
+  static const List<String> _sortOptionsData = [
     'Application date (newest first)',
     'Closest to location',
     'Most interested',
   ];
 
-  final List<String> _jobOptions = [
+  static const List<String> _jobOptionsData = [
     'All Jobs',
     'Senior Developer',
     'UI/UX Designer',
     'Product Manager',
   ];
 
-  final List<Map<String, dynamic>> _candidates = [
+  static const List<Map<String, dynamic>> _candidatesData = [
     {
       'name': 'Alex Johnson',
       'role': 'Senior Developer',
-      'experience': '5 years',
-      'status': 'New',
+      'location': 'Bangalore, India',
+      'status': 'Applied',
+      'time': '2h ago',
       'image': 'https://i.pravatar.cc/150?u=alex',
     },
     {
       'name': 'Sarah Smith',
       'role': 'UI/UX Designer',
-      'experience': '3 years',
-      'status': 'Contacted',
+      'location': 'Delhi, India',
+      'status': 'Shortlisted',
+      'time': '5h ago',
       'image': 'https://i.pravatar.cc/150?u=sarah',
     },
     {
       'name': 'Michael Brown',
       'role': 'Product Manager',
-      'experience': '8 years',
-      'status': 'New',
+      'location': 'Mumbai, India',
+      'status': 'Rejected',
+      'time': '1d ago',
       'image': 'https://i.pravatar.cc/150?u=michael',
     },
+    {
+      'name': 'Emily Davis',
+      'role': 'Frontend Engineer',
+      'location': 'Remote',
+      'status': 'Shortlisted',
+      'time': '2d ago',
+      'image': 'https://i.pravatar.cc/150?u=emily',
+    },
+    {
+      'name': 'Daniel Wilson',
+      'role': 'Backend Engineer',
+      'location': 'Pune, India',
+      'status': 'Applied',
+      'time': '3d ago',
+      'image': 'https://i.pravatar.cc/150?u=daniel',
+    },
   ];
+
+  int _selectedTab = 0;
+  String _selectedJob = 'All Jobs';
+  String _selectedSort = 'Application date (newest first)';
+  int? _activeCandidateIndex;
 
   @override
   Widget build(BuildContext context) {
@@ -92,7 +112,7 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
                   ),
                   const SizedBox(width: 24),
                   Expanded(
-                    child: _buildCandidateList(),
+                    child: _buildCandidateList(isDesktop),
                   ),
                 ],
               )
@@ -101,7 +121,7 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
                 children: [
                   const FilterSidebar(),
                   const SizedBox(height: 24),
-                  _buildCandidateList(),
+                  _buildCandidateList(isDesktop),
                 ],
               ),
           ],
@@ -139,7 +159,6 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
             ],
           ),
         ),
-        // Smaller Folder Icon
         Container(
           width: 70,
           height: 70,
@@ -238,7 +257,6 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
             ),
           ),
           if (isDesktop) const SizedBox(width: 40),
-          // Shield Lock Icon (Smaller)
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -270,12 +288,12 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
         
         return GridView.builder(
           shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(), // Disable all scrolling/stretching
+          physics: const NeverScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount,
             crossAxisSpacing: 8,
             mainAxisSpacing: 8,
-            childAspectRatio: 0.9, // Nearly square for balance
+            childAspectRatio: 0.9,
           ),
           itemCount: statusOptions.length,
           itemBuilder: (context, index) {
@@ -344,21 +362,21 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
         Row(
           children: [
             Expanded(
-              child: _buildFilterDropdown(
+              child: _FilterDropdown(
                 icon: LucideIcons.briefcase,
                 label: 'Job',
                 value: _selectedJob,
-                items: _jobOptions,
+                items: _jobOptionsData,
                 onChanged: (val) => setState(() => _selectedJob = val!),
               ),
             ),
             const SizedBox(width: 16),
             Expanded(
-              child: _buildFilterDropdown(
+              child: _FilterDropdown(
                 icon: LucideIcons.listFilter,
                 label: 'Sort by',
                 value: _selectedSort,
-                items: _sortOptions,
+                items: _sortOptionsData,
                 onChanged: (val) => setState(() => _selectedSort = val!),
               ),
             ),
@@ -367,266 +385,47 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
         const SizedBox(height: 16),
         Row(
           children: [
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: const TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Search candidates...',
-                    hintStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 15),
-                    prefixIcon: Icon(LucideIcons.search, size: 20, color: Color(0xFF64748B)),
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                  ),
-                ),
-              ),
-            ),
+            Expanded(child: _SearchInput()),
             const SizedBox(width: 16),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: const Icon(LucideIcons.slidersHorizontal, color: Colors.deepPurple, size: 24),
-            ),
+            const _FilterIconButton(),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildFilterDropdown({
-    required IconData icon,
-    required String label,
-    required String value,
-    required List<String> items,
-    required ValueChanged<String?> onChanged,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.deepPurple, size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8), fontWeight: FontWeight.w600),
-                ),
-                DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: value,
-                    isExpanded: true,
-                    isDense: true,
-                    icon: const Icon(LucideIcons.chevronDown, size: 16, color: Color(0xFF64748B)),
-                    items: items.map((String item) {
-                      return DropdownMenuItem<String>(
-                        value: item,
-                        child: Text(
-                          item,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 14, color: Color(0xFF1E293B), fontWeight: FontWeight.w700),
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: onChanged,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUpgradeCardContent() {
-    return Container(); // No longer used as it was merged into _buildUpgradeCard
-  }
-
-  Widget _buildTabs() {
-    return Container(); // No longer used as it was replaced by _buildStatusCards
-  }
-
-  Widget _buildTopFilters(bool isDesktop) {
-    return Container(); // No longer used as it was replaced by _buildFilterSection
-  }
-
-  Widget _buildRealDropdown({
-    required String label,
-    required String value,
-    required List<String> items,
-    required ValueChanged<String?> onChanged,
-  }) {
-    return Container(); // No longer used
-  }
-
-  Widget _buildCandidateList() {
-    final isDesktop = MediaQuery.of(context).size.width > 1024;
-    if (_candidates.isEmpty) {
+  Widget _buildCandidateList(bool isDesktop) {
+    if (_candidatesData.isEmpty) {
       return _buildEmptyState();
     }
 
-    return ListView.separated(
+    return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: _candidates.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 16),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: isDesktop ? 2 : 1,
+        crossAxisSpacing: 24,
+        mainAxisSpacing: 24,
+        mainAxisExtent: 220,
+      ),
+      itemCount: _candidatesData.length,
       itemBuilder: (context, index) {
-        return _buildCandidateCard(_candidates[index], isDesktop);
+        final c = _candidatesData[index];
+        return _ModernCandidateCard(
+          name: c['name']!,
+          role: c['role']!,
+          location: c['location']!,
+          status: c['status']!,
+          time: c['time']!,
+          imageUrl: c['image']!,
+          isActive: _activeCandidateIndex == index,
+          onTap: () {
+            setState(() {
+              _activeCandidateIndex = _activeCandidateIndex == index ? null : index;
+            });
+          },
+        );
       },
-    );
-  }
-
-  Widget _buildCandidateCard(Map<String, dynamic> candidate, bool isDesktop) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 28,
-                backgroundImage: NetworkImage(candidate['image']),
-              ),
-              const SizedBox(width: 20),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            candidate['name'],
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF1E293B),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        _buildStatusBadge(candidate['status']),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${candidate['role']} • ${candidate['experience']}',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Color(0xFF64748B),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (isDesktop) ...[
-                const SizedBox(width: 16),
-                Row(
-                  children: [
-                    _buildActionButton(LucideIcons.eye, 'View', Colors.grey.shade100, const Color(0xFF64748B)),
-                    const SizedBox(width: 12),
-                    _buildActionButton(LucideIcons.mail, 'Contact', AppColors.primary.withOpacity(0.1), AppColors.primary),
-                  ],
-                ),
-              ],
-            ],
-          ),
-          if (!isDesktop) ...[
-            const SizedBox(height: 16),
-            const Divider(height: 1, color: Color(0xFFF1F5F9)),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildActionButton(LucideIcons.eye, 'View', Colors.grey.shade100, const Color(0xFF64748B)),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildActionButton(LucideIcons.mail, 'Contact', AppColors.primary.withOpacity(0.1), AppColors.primary),
-                ),
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatusBadge(String status) {
-    final bool isNew = status == 'New';
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: isNew ? const Color(0xFFEEF2FF) : const Color(0xFFECFDF5),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        status,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-          color: isNew ? AppColors.primary : const Color(0xFF059669),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActionButton(IconData icon, String label, Color bgColor, Color textColor) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 16, color: textColor),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              label,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: textColor,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -655,6 +454,318 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
             style: TextStyle(fontSize: 14, color: Color(0xFF64748B), height: 1.5),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Interactive Modern Candidate Card
+// -----------------------------------------------------------------------------
+class _ModernCandidateCard extends StatefulWidget {
+  final String name;
+  final String role;
+  final String location;
+  final String status;
+  final String time;
+  final String imageUrl;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  const _ModernCandidateCard({
+    required this.name,
+    required this.role,
+    required this.location,
+    required this.status,
+    required this.time,
+    required this.imageUrl,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  @override
+  State<_ModernCandidateCard> createState() => _ModernCandidateCardState();
+}
+
+class _ModernCandidateCardState extends State<_ModernCandidateCard> {
+  bool _isHovered = false;
+
+  Color get _statusColor {
+    switch (widget.status) {
+      case 'Shortlisted': return const Color(0xFF10B981); // Green
+      case 'Applied': return const Color(0xFFF59E0B); // Orange
+      case 'Rejected': return const Color(0xFFEF4444); // Red
+      default: return const Color(0xFF3B82F6); // Blue fallback
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final showHighlight = widget.isActive || _isHovered;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+          transform: Matrix4.identity()..scale(showHighlight ? 1.02 : 1.0),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: showHighlight ? const Color(0xFF6366F1).withOpacity(0.5) : const Color(0xFFE2E8F0), 
+              width: 1.5,
+            ),
+            boxShadow: [
+              if (showHighlight) 
+                BoxShadow(color: const Color(0xFF6366F1).withOpacity(0.08), blurRadius: 20, offset: const Offset(0, 10))
+              else 
+                BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 4)),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Top Row: Profile & Status
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 24,
+                        backgroundImage: NetworkImage(widget.imageUrl),
+                        backgroundColor: const Color(0xFFEEF2FF),
+                      ),
+                      const SizedBox(width: 16),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(widget.name, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Color(0xFF1E293B))),
+                          const SizedBox(height: 2),
+                          Text(widget.role, style: const TextStyle(fontSize: 13, color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ],
+                  ),
+                  _buildStatusBadge(),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Location & Time Info
+              Row(
+                children: [
+                  Icon(LucideIcons.mapPin, size: 14, color: Colors.grey[400]),
+                  const SizedBox(width: 6),
+                  Text(widget.location, style: TextStyle(fontSize: 13, color: Colors.grey[500], fontWeight: FontWeight.w500)),
+                  const Spacer(),
+                  Icon(LucideIcons.clock, size: 14, color: Colors.grey[400]),
+                  const SizedBox(width: 6),
+                  Text('Applied ${widget.time}', style: TextStyle(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w500)),
+                ],
+              ),
+              const Spacer(),
+              // Bottom Action Buttons (Always visible on mobile, fade in on desktop if hovered/active)
+              AnimatedOpacity(
+                opacity: showHighlight || MediaQuery.of(context).size.width < 1024 ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 200),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextButton.icon(
+                        onPressed: () {},
+                        style: TextButton.styleFrom(
+                          backgroundColor: const Color(0xFFF8FAFC),
+                          foregroundColor: const Color(0xFF64748B),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        icon: const Icon(LucideIcons.user, size: 16),
+                        label: const Text('View Profile', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextButton.icon(
+                        onPressed: () {},
+                        style: TextButton.styleFrom(
+                          backgroundColor: const Color(0xFFEEF2FF),
+                          foregroundColor: const Color(0xFF6366F1),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        icon: const Icon(LucideIcons.checkCircle2, size: 16),
+                        label: const Text('Shortlist', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: _statusColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        widget.status,
+        style: TextStyle(color: _statusColor, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 0.3),
+      ),
+    );
+  }
+}
+
+class _FilterDropdown extends StatefulWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final List<String> items;
+  final ValueChanged<String?> onChanged;
+
+  const _FilterDropdown({required this.icon, required this.label, required this.value, required this.items, required this.onChanged});
+
+  @override
+  State<_FilterDropdown> createState() => _FilterDropdownState();
+}
+
+class _FilterDropdownState extends State<_FilterDropdown> {
+  bool _isFocused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Focus(
+      onFocusChange: (focused) => setState(() => _isFocused = focused),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: _isFocused ? 7 : 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: _isFocused ? const Color(0xFF6366F1) : const Color(0xFFE2E8F0),
+            width: _isFocused ? 2 : 1,
+          ),
+          boxShadow: _isFocused ? [BoxShadow(color: const Color(0xFF6366F1).withOpacity(0.2), spreadRadius: 2, blurRadius: 0)] : [],
+        ),
+        child: Row(
+          children: [
+            Icon(widget.icon, color: Colors.deepPurple, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.label,
+                    style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8), fontWeight: FontWeight.w600),
+                  ),
+                  DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: widget.value,
+                      isExpanded: true,
+                      isDense: true,
+                      icon: const Icon(LucideIcons.chevronDown, size: 16, color: Color(0xFF64748B)),
+                      items: widget.items.map((String item) {
+                        return DropdownMenuItem<String>(
+                          value: item,
+                          child: Text(
+                            item,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 14, color: Color(0xFF1E293B), fontWeight: FontWeight.w700),
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: widget.onChanged,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SearchInput extends StatefulWidget {
+  @override
+  State<_SearchInput> createState() => _SearchInputState();
+}
+
+class _SearchInputState extends State<_SearchInput> {
+  bool _isFocused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Focus(
+      onFocusChange: (focused) => setState(() => _isFocused = focused),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: _isFocused ? const Color(0xFF6366F1) : const Color(0xFFE2E8F0), width: _isFocused ? 2 : 1),
+          boxShadow: _isFocused ? [BoxShadow(color: const Color(0xFF6366F1).withOpacity(0.2), spreadRadius: 2, blurRadius: 0)] : [],
+        ),
+        child: const TextField(
+          decoration: InputDecoration(
+            hintText: 'Search candidates...',
+            hintStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 15),
+            prefixIcon: Icon(LucideIcons.search, size: 20, color: Color(0xFF64748B)),
+            border: InputBorder.none,
+            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FilterIconButton extends StatefulWidget {
+  const _FilterIconButton();
+
+  @override
+  State<_FilterIconButton> createState() => _FilterIconButtonState();
+}
+
+class _FilterIconButtonState extends State<_FilterIconButton> {
+  bool _isFocused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Focus(
+      onFocusChange: (focused) => setState(() => _isFocused = focused),
+      child: InkWell(
+        onTap: () {
+          // Action for filter icon
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: EdgeInsets.all(_isFocused ? 15 : 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: _isFocused ? const Color(0xFF6366F1) : const Color(0xFFE2E8F0), width: _isFocused ? 2 : 1),
+            boxShadow: _isFocused ? [BoxShadow(color: const Color(0xFF6366F1).withOpacity(0.2), spreadRadius: 2, blurRadius: 0)] : [],
+          ),
+          child: const Icon(LucideIcons.slidersHorizontal, color: Colors.deepPurple, size: 24),
+        ),
       ),
     );
   }

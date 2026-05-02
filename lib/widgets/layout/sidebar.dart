@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../providers/navigation_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../theme/app_colors.dart';
 
 class Sidebar extends ConsumerStatefulWidget {
@@ -294,7 +295,12 @@ class _SidebarState extends ConsumerState<Sidebar> {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: InkWell(
-        onTap: () => Navigator.of(context).pushReplacementNamed('/login'),
+        onTap: () async {
+          await ref.read(authProvider.notifier).logout();
+          if (mounted) {
+            Navigator.of(context).pushReplacementNamed('/login');
+          }
+        },
         borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
