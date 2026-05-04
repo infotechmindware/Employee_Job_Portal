@@ -24,8 +24,92 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _obscureConfirmPassword = true;
   bool _agreeToTerms = false;
 
+  // Real-time validation state — green only after valid input
+  bool _emailValid = false;
+  bool _passwordValid = false;
+  bool _confirmPasswordValid = false;
+  bool _emailTouched = false;
+  bool _passwordTouched = false;
+  bool _confirmPasswordTouched = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController.addListener(_validateEmail);
+    _passwordController.addListener(_validatePassword);
+    _confirmPasswordController.addListener(_validateConfirmPassword);
+  }
+
+  // --- Validation helpers ---
+  bool _isValidEmail(String email) {
+    final regex = RegExp(r'^[\w\.-]+@[\w\.-]+\.\w{2,}$');
+    return email.isNotEmpty && regex.hasMatch(email);
+  }
+
+  bool get _hasLowercase => RegExp(r'[a-z]').hasMatch(_passwordController.text);
+  bool get _hasUppercase => RegExp(r'[A-Z]').hasMatch(_passwordController.text);
+  bool get _hasDigit => RegExp(r'[0-9]').hasMatch(_passwordController.text);
+  bool get _hasSpecialChar => RegExp(r'[!@#\$%\^&\*_]').hasMatch(_passwordController.text);
+  bool get _hasValidLength {
+    final len = _passwordController.text.length;
+    return len >= 8 && len <= 20;
+  }
+  bool get _isNotCommon {
+    const common = ['password123', 'password', '12345678', 'qwerty123', 'abc12345'];
+    return _passwordController.text.isNotEmpty && !common.contains(_passwordController.text.toLowerCase());
+  }
+  bool get _allPasswordReqsMet => _hasLowercase && _hasUppercase && _hasDigit && _hasSpecialChar && _hasValidLength && _isNotCommon;
+
+  String get _passwordStrengthLabel {
+    if (_passwordController.text.isEmpty) return '';
+    int score = [_hasLowercase, _hasUppercase, _hasDigit, _hasSpecialChar, _hasValidLength, _isNotCommon].where((e) => e).length;
+    if (score <= 2) return 'Weak';
+    if (score <= 4) return 'Fair';
+    if (score <= 5) return 'Good';
+    return 'Strong';
+  }
+
+  Color get _passwordStrengthColor {
+    switch (_passwordStrengthLabel) {
+      case 'Weak': return const Color(0xFFEF4444);
+      case 'Fair': return const Color(0xFFF59E0B);
+      case 'Good': return const Color(0xFF3B82F6);
+      case 'Strong': return const Color(0xFF16A34A);
+      default: return Colors.grey;
+    }
+  }
+
+  void _validateEmail() {
+    setState(() {
+      if (_emailController.text.isNotEmpty) _emailTouched = true;
+      _emailValid = _isValidEmail(_emailController.text);
+    });
+  }
+
+  void _validatePassword() {
+    setState(() {
+      if (_passwordController.text.isNotEmpty) _passwordTouched = true;
+      _passwordValid = _allPasswordReqsMet;
+      // Re-validate confirm password when password changes
+      if (_confirmPasswordController.text.isNotEmpty) {
+        _confirmPasswordValid = _confirmPasswordController.text == _passwordController.text;
+      }
+    });
+  }
+
+  void _validateConfirmPassword() {
+    setState(() {
+      if (_confirmPasswordController.text.isNotEmpty) _confirmPasswordTouched = true;
+      _confirmPasswordValid = _confirmPasswordController.text.isNotEmpty &&
+          _confirmPasswordController.text == _passwordController.text;
+    });
+  }
+
   @override
   void dispose() {
+    _emailController.removeListener(_validateEmail);
+    _passwordController.removeListener(_validatePassword);
+    _confirmPasswordController.removeListener(_validateConfirmPassword);
     _nameController.dispose();
     _mobileController.dispose();
     _emailController.dispose();
@@ -341,50 +425,58 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           
           _buildLabel('Email Address'),
           const SizedBox(height: 8),
-          _buildTextField('sujeet2@gmail.com', isSuccess: true, controller: _emailController),
+          _buildTextField('Enter your email address', isSuccess: _emailTouched && _emailValid, controller: _emailController),
           const SizedBox(height: 4),
           Text("We'll use this to create your account. You can add more details after registration.", style: TextStyle(color: Colors.grey[500], fontSize: 12)),
           const SizedBox(height: 16),
           
           _buildLabel('Password'),
           const SizedBox(height: 8),
-          _buildPasswordField('••••••••', true, isSuccess: true, controller: _passwordController),
+          _buildPasswordField('••••••••', true, isSuccess: _passwordTouched && _passwordValid, controller: _passwordController),
           const SizedBox(height: 8),
           
-          // Password Requirements
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Strong', style: TextStyle(color: Color(0xFF16A34A), fontWeight: FontWeight.bold, fontSize: 12)),
-              Text('8/20 characters', style: TextStyle(color: Colors.grey[400], fontSize: 12)),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF0FDF4),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          // Password Requirements — dynamic
+          if (_passwordTouched) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Password Requirements', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                const SizedBox(height: 8),
-                _buildReqItem('At least one lowercase letter (a-z)', true),
-                _buildReqItem('At least one uppercase letter (A-Z)', true),
-                _buildReqItem('At least one number (0-9)', true),
-                _buildReqItem('At least one special character (!@#\$%^&*_)', true),
-                _buildReqItem('Between 8 and 20 characters (NIST recommended)', true),
-                _buildReqItem('Not a common password (e.g. "password123")', true),
+                if (_passwordStrengthLabel.isNotEmpty)
+                  Text(_passwordStrengthLabel, style: TextStyle(color: _passwordStrengthColor, fontWeight: FontWeight.bold, fontSize: 12)),
+                Text('${_passwordController.text.length}/20 characters', style: TextStyle(color: Colors.grey[400], fontSize: 12)),
               ],
             ),
-          ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: _allPasswordReqsMet ? const Color(0xFFF0FDF4) : Colors.grey[50],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Password Requirements', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  const SizedBox(height: 8),
+                  _buildReqItem('At least one lowercase letter (a-z)', _hasLowercase),
+                  _buildReqItem('At least one uppercase letter (A-Z)', _hasUppercase),
+                  _buildReqItem('At least one number (0-9)', _hasDigit),
+                  _buildReqItem('At least one special character (!@#\$%^\&*_)', _hasSpecialChar),
+                  _buildReqItem('Between 8 and 20 characters (NIST recommended)', _hasValidLength),
+                  _buildReqItem('Not a common password (e.g. "password123")', _isNotCommon),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           
           _buildLabel('Confirm Password'),
           const SizedBox(height: 8),
-          _buildPasswordField('Re-enter your password', false, controller: _confirmPasswordController),
+          _buildPasswordField('Re-enter your password', false, isSuccess: _confirmPasswordTouched && _confirmPasswordValid, controller: _confirmPasswordController),
+          if (_confirmPasswordTouched && _confirmPasswordController.text.isNotEmpty && !_confirmPasswordValid)
+            const Padding(
+              padding: EdgeInsets.only(top: 6),
+              child: Text('Passwords do not match', style: TextStyle(color: Color(0xFFEF4444), fontSize: 12)),
+            ),
           const SizedBox(height: 24),
           
           _buildDivider('Or continue with'),

@@ -29,7 +29,9 @@ class Header extends ConsumerWidget {
         children: [
           IconButton(
             onPressed: onMenuPressed,
-            icon: const Icon(LucideIcons.menu, color: Color(0xFF64748B), size: 20),
+            icon: const Icon(LucideIcons.menu, color: Color(0xFF64748B), size: 28),
+            padding: const EdgeInsets.all(12),
+            constraints: const BoxConstraints(),
           ),
           const SizedBox(width: 16),
           if (isDesktop) ...[
