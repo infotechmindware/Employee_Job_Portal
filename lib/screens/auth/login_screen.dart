@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../theme/app_colors.dart';
@@ -17,10 +18,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordController = TextEditingController();
   final _mobileController = TextEditingController();
   final _otpController = TextEditingController();
+  final _emailOtpController = TextEditingController();
   
   bool _isEmailLogin = true;
   bool _obscurePassword = true;
   bool _rememberMe = false;
+  bool _isOtpButtonDisabled = false;
 
   @override
   void dispose() {
@@ -28,12 +31,42 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _passwordController.dispose();
     _mobileController.dispose();
     _otpController.dispose();
+    _emailOtpController.dispose();
     super.dispose();
+  }
+
+  void _sendEmailOtp() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter email first')),
+      );
+      return;
+    }
+
+    _emailOtpController.clear();
+    setState(() { _isOtpButtonDisabled = true; });
+    Future.delayed(const Duration(seconds: 30), () {
+      if (mounted) setState(() { _isOtpButtonDisabled = false; });
+    });
+
+    final success = await ref.read(authProvider.notifier).sendEmailOtp(email);
+    if (success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('OTP sent to your email')),
+      );
+    } else if (mounted) {
+      final error = ref.read(authProvider).error;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error ?? 'Failed to send OTP')),
+      );
+    }
   }
 
   void _handleLogin() async {
     final identifier = _isEmailLogin ? _emailController.text : _mobileController.text;
     final password = _isEmailLogin ? _passwordController.text : _otpController.text;
+    final emailOtp = _isEmailLogin ? _emailOtpController.text.trim() : null;
 
     if (identifier.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -42,7 +75,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
 
-    final success = await ref.read(authProvider.notifier).login(identifier, password);
+    if (_isEmailLogin) {
+      if (emailOtp == null || emailOtp.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter the OTP')),
+        );
+        return;
+      }
+      if (emailOtp.length != 6) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Invalid OTP format')),
+        );
+        return;
+      }
+      print("EMAIL: ${identifier.trim()}");
+      print("OTP: $emailOtp");
+    }
+
+    final success = await ref.read(authProvider.notifier).login(identifier.trim(), password, emailOtp: emailOtp);
 
     if (success) {
       if (mounted) {
@@ -380,7 +430,58 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           _buildLabel('Password'),
           const SizedBox(height: 8),
           _buildTextField('••••••••', isPassword: true, controller: _passwordController),
-          const SizedBox(height: 16),
+          const SizedBox(height: 15),
+          _buildLabel('Email OTP'),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: TextField(
+                  controller: _emailOtpController,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: InputDecoration(
+                    counterText: '',
+                    hintText: '6-digit OTP',
+                    hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.primary),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                flex: 1,
+                child: ElevatedButton(
+                  onPressed: (_isOtpButtonDisabled || ref.watch(authProvider).isLoading) ? null : _sendEmailOtp,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFFEDD5),
+                    foregroundColor: const Color(0xFFEA580C),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
+                  ),
+                  child: const Text('Send OTP', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 15),
           Wrap(
             alignment: WrapAlignment.spaceBetween,
             crossAxisAlignment: WrapCrossAlignment.center,

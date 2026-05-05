@@ -23,12 +23,18 @@ class AuthService {
     );
   }
 
-  Future<Map<String, dynamic>> login(String identifier, String password) async {
+  Future<Map<String, dynamic>> login(String identifier, String password, {String? emailOtp}) async {
     try {
-      final response = await _post('/login', {
+      final Map<String, dynamic> body = {
         'email': identifier,
         'password': password,
-      });
+      };
+      if (emailOtp != null) {
+        body['otp'] = emailOtp;
+        body['purpose'] = 'auth';
+      }
+      
+      final response = await _post('/login', body);
 
       print('Login Response: ${response.body}');
 
@@ -44,6 +50,25 @@ class AuthService {
         }
       } else {
         return {'success': false, 'message': 'Server error: Invalid response format (HTML received)'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> sendEmailOtp(String email) async {
+    try {
+      final response = await _post('/send-email-otp', {'email': email});
+      print('Send OTP Response: ${response.body}');
+      if (response.body.startsWith('{')) {
+        final data = jsonDecode(response.body);
+        if (response.statusCode == 200) {
+          return {'success': true, 'message': data['message'] ?? 'OTP sent successfully'};
+        } else {
+          return {'success': false, 'message': data['message'] ?? 'Failed to send OTP'};
+        }
+      } else {
+        return {'success': false, 'message': 'Invalid response format'};
       }
     } catch (e) {
       return {'success': false, 'message': 'Network error: $e'};

@@ -38,12 +38,25 @@ class AuthNotifier extends Notifier<AuthState> {
     return AuthState();
   }
 
-  Future<bool> login(String identifier, String password) async {
+  Future<bool> login(String identifier, String password, {String? emailOtp}) async {
     state = state.copyWith(isLoading: true, error: null);
-    final result = await _authService.login(identifier, password);
+    final result = await _authService.login(identifier, password, emailOtp: emailOtp);
     
     if (result['success']) {
       state = state.copyWith(isLoading: false, isSuccess: true, token: result['data']['token']);
+      return true;
+    } else {
+      state = state.copyWith(isLoading: false, error: result['message']);
+      return false;
+    }
+  }
+
+  Future<bool> sendEmailOtp(String email) async {
+    state = state.copyWith(isLoading: true, error: null);
+    final result = await _authService.sendEmailOtp(email);
+    
+    if (result['success']) {
+      state = state.copyWith(isLoading: false);
       return true;
     } else {
       state = state.copyWith(isLoading: false, error: result['message']);
