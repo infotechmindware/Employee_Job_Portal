@@ -161,7 +161,9 @@ class WizardTextField extends StatelessWidget {
   final int maxLines;
   final TextInputType keyboardType;
   final IconData? prefixIcon;
+  final IconData? suffixIcon;
   final String? Function(String?)? validator;
+  final FocusNode? focusNode;
 
   const WizardTextField({
     super.key,
@@ -170,13 +172,16 @@ class WizardTextField extends StatelessWidget {
     this.maxLines = 1,
     this.keyboardType = TextInputType.text,
     this.prefixIcon,
+    this.suffixIcon,
     this.validator,
+    this.focusNode,
   });
 
   @override
   Widget build(BuildContext context) {
     return TextFormField(
       controller: controller,
+      focusNode: focusNode,
       maxLines: maxLines,
       keyboardType: keyboardType,
       validator: validator,
@@ -190,6 +195,9 @@ class WizardTextField extends StatelessWidget {
         hintStyle: const TextStyle(color: kTextHint, fontSize: 14),
         prefixIcon: prefixIcon != null
             ? Icon(prefixIcon, size: 18, color: kTextSub)
+            : null,
+        suffixIcon: suffixIcon != null
+            ? Icon(suffixIcon, size: 18, color: kTextHint)
             : null,
         filled: true,
         fillColor: const Color(0xFFF9FAFB),

@@ -6,12 +6,14 @@ class StepReviewPublish extends StatefulWidget {
   final PostJobModel model;
   final VoidCallback onBack;
   final VoidCallback onPublish;
+  final bool isPublishing;
 
   const StepReviewPublish({
     super.key,
     required this.model,
     required this.onBack,
     required this.onPublish,
+    this.isPublishing = false,
   });
 
   @override
@@ -19,7 +21,6 @@ class StepReviewPublish extends StatefulWidget {
 }
 
 class _StepReviewPublishState extends State<StepReviewPublish> {
-  bool _isPublishing = false;
 
   String get _salaryDisplay {
     final m = widget.model;
@@ -424,13 +425,8 @@ class _StepReviewPublishState extends State<StepReviewPublish> {
                 child: WizardPrimaryButton(
                   label: 'Publish Job',
                   icon: Icons.rocket_launch_rounded,
-                  isLoading: _isPublishing,
-                  onTap: () async {
-                    setState(() => _isPublishing = true);
-                    await Future.delayed(const Duration(seconds: 2));
-                    setState(() => _isPublishing = false);
-                    widget.onPublish();
-                  },
+                  isLoading: widget.isPublishing,
+                  onTap: widget.isPublishing ? null : widget.onPublish,
                 ),
               ),
             ],

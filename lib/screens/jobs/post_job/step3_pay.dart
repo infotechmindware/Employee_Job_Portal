@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'post_job_model.dart';
 import 'wizard_widgets.dart';
+import '../../../services/job_service.dart';
+import 'package:flutter_typeahead/flutter_typeahead.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/job_post_provider.dart';
 
 class StepPayBenefits extends StatefulWidget {
   final PostJobModel model;
@@ -280,57 +284,79 @@ class _StepPayBenefitsState extends State<StepPayBenefits> {
                     Icons.psychology_outlined, 'Required Skills'),
                 const SizedBox(height: 16),
                 // Tag input
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF9FAFB),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: kBorder),
+                TypeAheadField<String>(
+                  controller: _skillInputCtrl,
+                  focusNode: _skillFocusNode,
+                  suggestionsCallback: (search) => Provider.of<JobPostProvider>(context, listen: false).searchSkills(
+                    query: search,
+                    title: widget.model.jobTitle,
+                    category: widget.model.industry.isNotEmpty ? widget.model.industry : 'IT / Software',
                   ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _skillInputCtrl,
-                          focusNode: _skillFocusNode,
-                          style: const TextStyle(
-                              fontSize: 14, color: kText),
-                          decoration: const InputDecoration(
-                            hintText: 'Type a skill and press Enter...',
-                            hintStyle:
-                                TextStyle(color: kTextHint, fontSize: 13),
-                            border: InputBorder.none,
-                            isDense: true,
-                            contentPadding: EdgeInsets.symmetric(
-                                vertical: 8),
-                          ),
-                          onSubmitted: _addSkill,
-                        ),
+                  builder: (context, controller, focusNode) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF9FAFB),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: kBorder),
                       ),
-                      GestureDetector(
-                        onTap: () {
-                          _addSkill(_skillInputCtrl.text);
-                          _skillFocusNode.requestFocus();
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: kPrimary,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Text(
-                            'Add',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: controller,
+                              focusNode: focusNode,
+                              style: const TextStyle(fontSize: 14, color: kText),
+                              decoration: const InputDecoration(
+                                hintText: 'Type a skill and press Enter...',
+                                hintStyle: TextStyle(color: kTextHint, fontSize: 13),
+                                border: InputBorder.none,
+                                isDense: true,
+                                contentPadding: EdgeInsets.symmetric(vertical: 8),
+                              ),
+                              onSubmitted: _addSkill,
                             ),
                           ),
-                        ),
+                          GestureDetector(
+                            onTap: () {
+                              _addSkill(controller.text);
+                              focusNode.requestFocus();
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: kPrimary,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Text(
+                                'Add',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    );
+                  },
+                  itemBuilder: (context, suggestion) {
+                    return ListTile(
+                      dense: true,
+                      title: Text(suggestion, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                      leading: const Icon(Icons.bolt_rounded, size: 16, color: kPrimary),
+                    );
+                  },
+                  onSelected: _addSkill,
+                  loadingBuilder: (context) => const SizedBox(
+                    height: 50,
+                    child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: kPrimary)),
+                  ),
+                  emptyBuilder: (context) => const Padding(
+                    padding: EdgeInsets.all(12.0),
+                    child: Text('No suggestions', style: TextStyle(color: kTextSub, fontSize: 12)),
                   ),
                 ),
                 if (widget.model.skills.isNotEmpty) ...[

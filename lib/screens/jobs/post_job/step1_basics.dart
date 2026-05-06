@@ -3,6 +3,15 @@ import 'package:dropdown_search/dropdown_search.dart';
 import 'post_job_model.dart';
 import 'wizard_widgets.dart';
 import '../../../services/location_service.dart';
+import '../../../services/job_service.dart';
+import 'package:flutter_typeahead/flutter_typeahead.dart';
+import 'package:provider/provider.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:dropdown_search/dropdown_search.dart';
+import '../../../data/industry_data.dart';
+import '../../../providers/location_provider.dart';
+import '../../../providers/job_post_provider.dart';
 
 class StepJobBasics extends StatefulWidget {
   final PostJobModel model;
@@ -23,23 +32,12 @@ class _StepJobBasicsState extends State<StepJobBasics> {
   late TextEditingController _titleCtrl;
   late TextEditingController _addressCtrl;
 
-  final List<String> _industries = [
-    'Technology', 'Finance', 'Healthcare', 'Education',
-    'Manufacturing', 'Retail', 'Marketing', 'Legal',
-    'Hospitality', 'Construction', 'Media', 'Other',
-  ];
+  final List<String> _industries = IndustryData.industries;
 
   final List<String> _employmentTypes = [
     'Full-time', 'Part-time', 'Contract', 'Freelance', 'Internship',
   ];
 
-  List<String> _countries = [];
-  List<String> _states = [];
-  List<String> _cities = [];
-
-  bool _isLoadingCountries = false;
-  bool _isLoadingStates = false;
-  bool _isLoadingCities = false;
 
   final List<String> _languages = [
     'English', 'Hindi', 'Punjabi', 'Bengali', 'Tamil', 'Telugu', 'Marathi', 
@@ -58,50 +56,68 @@ class _StepJobBasicsState extends State<StepJobBasics> {
     if (widget.model.country.isEmpty) widget.model.country = 'India';
     if (widget.model.jobLanguage.isEmpty) widget.model.jobLanguage = 'English';
 
-    _loadInitialData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadInitialData();
+    });
   }
 
   Future<void> _loadInitialData() async {
-    setState(() => _isLoadingCountries = true);
-    final countries = await LocationService.getCountries();
-    setState(() {
-      _countries = countries;
-      _isLoadingCountries = false;
-    });
+    final locationProv = Provider.of<LocationProvider>(context, listen: false);
+    
+    if (locationProv.countries.isEmpty) {
+      await locationProv.fetchCountries();
+    }
 
+    // Sync model to provider if already has values
     if (widget.model.country.isNotEmpty) {
-      await _loadStates(widget.model.country);
+      locationProv.selectedCountry = widget.model.country;
+      await locationProv.onCountryChanged(widget.model.country);
+      
       if (widget.model.state.isNotEmpty) {
-        await _loadCities(widget.model.country, widget.model.state);
+        locationProv.selectedState = widget.model.state;
+        await locationProv.onStateChanged(widget.model.state);
+        
+        if (widget.model.city.isNotEmpty) {
+          locationProv.selectedCity = widget.model.city;
+        }
       }
     }
   }
 
-  Future<void> _loadStates(String country) async {
-    setState(() {
-      _isLoadingStates = true;
-      _states.clear();
-      widget.model.state = '';
-      widget.model.city = '';
-    });
-    final states = await LocationService.getStates(country);
-    setState(() {
-      _states = states;
-      _isLoadingStates = false;
-    });
-  }
+  Future<void> _detectLocation() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
 
-  Future<void> _loadCities(String country, String state) async {
-    setState(() {
-      _isLoadingCities = true;
-      _cities.clear();
-      widget.model.city = '';
-    });
-    final cities = await LocationService.getCities(country, state);
-    setState(() {
-      _cities = cities;
-      _isLoadingCities = false;
-    });
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) return;
+      }
+
+      final position = await Geolocator.getCurrentPosition();
+      final placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
+      
+      if (placemarks.isNotEmpty) {
+        final place = placemarks.first;
+        final country = place.country ?? '';
+        final state = place.administrativeArea ?? '';
+        final city = place.locality ?? place.subAdministrativeArea ?? '';
+
+        final locProv = Provider.of<LocationProvider>(context, listen: false);
+        
+        setState(() {
+          widget.model.country = country;
+          widget.model.state = state;
+          widget.model.city = city;
+        });
+
+        await locProv.onCountryChanged(country);
+        await locProv.onStateChanged(state);
+      }
+    } catch (e) {
+      print('❌ Geolocation Error: $e');
+    }
   }
 
   @override
@@ -119,8 +135,8 @@ class _StepJobBasicsState extends State<StepJobBasics> {
         child: Container(
           width: MediaQuery.of(context).size.width * 0.9,
           padding: const EdgeInsets.all(24),
-          child: StatefulBuilder(
-            builder: (context, setDialogState) => Column(
+          child: Consumer<LocationProvider>(
+            builder: (context, loc, _) => Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -146,22 +162,17 @@ class _StepJobBasicsState extends State<StepJobBasics> {
                 const WizardLabel('Posting Country'),
                 const SizedBox(height: 8),
                 _buildSearchableDropdown(
-                  items: _countries,
+                  items: loc.countries,
                   selectedItem: widget.model.country,
-                  isLoading: _isLoadingCountries,
+                  isLoading: loc.isLoadingCountries,
                   onChanged: (v) async {
                     final newCountry = v ?? '';
-                    setDialogState(() {
+                    setState(() {
                       widget.model.country = newCountry;
                       widget.model.state = ''; 
                       widget.model.city = '';
                     });
-                    setState(() {});
-                    if (newCountry.isNotEmpty) {
-                      setDialogState(() {}); // Show loading in dialog
-                      await _loadStates(newCountry);
-                      setDialogState(() {}); // Show data in dialog
-                    }
+                    await loc.onCountryChanged(newCountry);
                   },
                 ),
                 
@@ -175,23 +186,18 @@ class _StepJobBasicsState extends State<StepJobBasics> {
                           const WizardLabel('State'),
                           const SizedBox(height: 8),
                           _buildSearchableDropdown(
-                            items: _states,
+                            items: loc.states,
                             selectedItem: widget.model.state,
-                            isLoading: _isLoadingStates,
+                            isLoading: loc.isLoadingStates,
                             enabled: widget.model.country.isNotEmpty,
                             hint: widget.model.country.isEmpty ? 'Country' : 'State',
                             onChanged: (v) async {
                               final newState = v ?? '';
-                              setDialogState(() {
+                              setState(() {
                                 widget.model.state = newState;
                                 widget.model.city = '';
                               });
-                              setState(() {});
-                              if (newState.isNotEmpty) {
-                                setDialogState(() {}); // Show loading
-                                await _loadCities(widget.model.country, newState);
-                                setDialogState(() {}); // Show data
-                              }
+                              await loc.onStateChanged(newState);
                             },
                           ),
                         ],
@@ -205,14 +211,14 @@ class _StepJobBasicsState extends State<StepJobBasics> {
                           const WizardLabel('City'),
                           const SizedBox(height: 8),
                           _buildSearchableDropdown(
-                            items: _cities,
+                            items: loc.cities,
                             selectedItem: widget.model.city,
-                            isLoading: _isLoadingCities,
+                            isLoading: loc.isLoadingCities,
                             enabled: widget.model.state.isNotEmpty,
                             hint: widget.model.state.isEmpty ? 'State' : 'City',
                             onChanged: (v) {
-                              setDialogState(() => widget.model.city = v ?? '');
-                              setState(() {});
+                              setState(() => widget.model.city = v ?? '');
+                              loc.onCityChanged(v);
                             },
                           ),
                         ],
@@ -228,8 +234,7 @@ class _StepJobBasicsState extends State<StepJobBasics> {
                   items: _languages,
                   selectedItem: widget.model.jobLanguage,
                   onChanged: (v) {
-                    setDialogState(() => widget.model.jobLanguage = v ?? 'English');
-                    setState(() {});
+                    setState(() => widget.model.jobLanguage = v ?? 'English');
                   },
                 ),
                 
@@ -436,21 +441,115 @@ class _StepJobBasicsState extends State<StepJobBasics> {
                   const SizedBox(height: 20),
                   const WizardLabel('Job Title'),
                   const SizedBox(height: 8),
-                  WizardTextField(
-                    hint: 'e.g. Senior Flutter Developer',
+                  TypeAheadField<String>(
                     controller: _titleCtrl,
-                    prefixIcon: Icons.badge_outlined,
-                    validator: (v) =>
-                        v == null || v.isEmpty ? 'Required' : null,
+                    builder: (context, controller, focusNode) {
+                      return WizardTextField(
+                        hint: 'e.g. Senior Product Designer',
+                        controller: controller,
+                        focusNode: focusNode,
+                        prefixIcon: Icons.work_outline_rounded,
+                        suffixIcon: Icons.search_rounded,
+                        validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                      );
+                    },
+                    suggestionsCallback: (search) => Provider.of<JobPostProvider>(context, listen: false).searchJobTitles(search),
+                    itemBuilder: (context, suggestion) {
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: const BoxDecoration(
+                          border: Border(bottom: BorderSide(color: kBorder, width: 0.5)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.history_rounded, size: 16, color: kTextSub.withOpacity(0.5)),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                suggestion,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: kText,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    onSelected: (suggestion) {
+                      _titleCtrl.text = suggestion;
+                      widget.model.jobTitle = suggestion;
+                    },
+                    loadingBuilder: (context) => Container(
+                      height: 100,
+                      alignment: Alignment.center,
+                      child: const CircularProgressIndicator(strokeWidth: 2.5, color: kPrimary),
+                    ),
+                    emptyBuilder: (context) => const Padding(
+                      padding: EdgeInsets.all(20.0),
+                      child: Text(
+                        'No matching job titles found',
+                        style: TextStyle(color: kTextSub, fontSize: 13, fontStyle: FontStyle.italic),
+                      ),
+                    ),
+                    decorationBuilder: (context, child) {
+                      return Material(
+                        elevation: 12,
+                        shadowColor: Colors.black26,
+                        borderRadius: BorderRadius.circular(12),
+                        color: Colors.white,
+                        child: child,
+                      );
+                    },
                   ),
                   const SizedBox(height: 20),
                   const WizardLabel('Industry / Category'),
                   const SizedBox(height: 8),
-                  WizardDropdown(
-                    value: widget.model.industry,
-                    items: _industries,
-                    hint: 'Select industry',
-                    onChanged: (v) => setState(() => widget.model.industry = v ?? ''),
+                  DropdownSearch<String>(
+                    items: (filter, loadProps) => _industries.where((i) => i.toLowerCase().contains(filter.toLowerCase())).toList(),
+                    selectedItem: widget.model.industry.isEmpty ? null : widget.model.industry,
+                    decoratorProps: DropDownDecoratorProps(
+                      decoration: InputDecoration(
+                        hintText: 'Select Industry',
+                        hintStyle: const TextStyle(color: kTextHint, fontSize: 14),
+                        prefixIcon: const Icon(Icons.category_outlined, size: 20, color: kTextSub),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: kBorder),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: kBorder),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: kPrimary, width: 1.5),
+                        ),
+                      ),
+                    ),
+                    popupProps: PopupProps.menu(
+                      showSearchBox: true,
+                      searchFieldProps: TextFieldProps(
+                        decoration: InputDecoration(
+                          hintText: 'Search industry...',
+                          prefixIcon: const Icon(Icons.search, size: 18),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                      menuProps: MenuProps(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    onSelected: (v) => setState(() => widget.model.industry = v ?? ''),
                   ),
                 ],
               ),
@@ -499,79 +598,99 @@ class _StepJobBasicsState extends State<StepJobBasics> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildSectionHeader(
-                    Icons.location_on_outlined,
-                    'Location',
-                  ),
-                  const SizedBox(height: 20),
-                  const WizardLabel('Country'),
-                  const SizedBox(height: 8),
-                  _buildSearchableDropdown(
-                    items: _countries,
-                    selectedItem: widget.model.country,
-                    isLoading: _isLoadingCountries,
-                    onChanged: (v) async {
-                      final newCountry = v ?? '';
-                      setState(() {
-                        widget.model.country = newCountry;
-                        widget.model.state = '';
-                        widget.model.city = '';
-                      });
-                      if (newCountry.isNotEmpty) {
-                        await _loadStates(newCountry);
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 16),
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const WizardLabel('State'),
-                            const SizedBox(height: 8),
-                            _buildSearchableDropdown(
-                              items: _states,
-                              selectedItem: widget.model.state,
-                              isLoading: _isLoadingStates,
-                              enabled: widget.model.country.isNotEmpty,
-                              hint: widget.model.country.isEmpty ? 'Country' : 'State',
-                              onChanged: (v) async {
-                                final newState = v ?? '';
-                                setState(() {
-                                  widget.model.state = newState;
-                                  widget.model.city = '';
-                                });
-                                if (newState.isNotEmpty) {
-                                  await _loadCities(widget.model.country, newState);
-                                }
-                              },
-                            ),
-                          ],
-                        ),
+                      _buildSectionHeader(
+                        Icons.location_on_outlined,
+                        'Job Location',
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const WizardLabel('City'),
-                            const SizedBox(height: 8),
-                            _buildSearchableDropdown(
-                              items: _cities,
-                              selectedItem: widget.model.city,
-                              isLoading: _isLoadingCities,
-                              enabled: widget.model.state.isNotEmpty,
-                              hint: widget.model.state.isEmpty ? 'State' : 'City',
-                              onChanged: (v) {
-                                setState(() => widget.model.city = v ?? '');
-                              },
-                            ),
-                          ],
+                      TextButton.icon(
+                        onPressed: _detectLocation,
+                        icon: const Icon(Icons.my_location_rounded, size: 14),
+                        label: const Text(
+                          'Detect Location',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                        ),
+                        style: TextButton.styleFrom(
+                          foregroundColor: kPrimary,
+                          visualDensity: VisualDensity.compact,
                         ),
                       ),
                     ],
+                  ),
+                  Consumer<LocationProvider>(
+                    builder: (context, loc, _) => Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const WizardLabel('Country'),
+                        const SizedBox(height: 8),
+                        _buildSearchableDropdown(
+                          items: loc.countries,
+                          selectedItem: widget.model.country,
+                          isLoading: loc.isLoadingCountries,
+                          onChanged: (v) async {
+                            final newCountry = v ?? '';
+                            setState(() {
+                              widget.model.country = newCountry;
+                              widget.model.state = '';
+                              widget.model.city = '';
+                            });
+                            await loc.onCountryChanged(newCountry);
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const WizardLabel('State'),
+                                  const SizedBox(height: 8),
+                                  _buildSearchableDropdown(
+                                    items: loc.states,
+                                    selectedItem: widget.model.state,
+                                    isLoading: loc.isLoadingStates,
+                                    enabled: widget.model.country.isNotEmpty,
+                                    hint: widget.model.country.isEmpty ? 'Country' : 'State',
+                                    onChanged: (v) async {
+                                      final newState = v ?? '';
+                                      setState(() {
+                                        widget.model.state = newState;
+                                        widget.model.city = '';
+                                      });
+                                      await loc.onStateChanged(newState);
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const WizardLabel('City'),
+                                  const SizedBox(height: 8),
+                                  _buildSearchableDropdown(
+                                    items: loc.cities,
+                                    selectedItem: widget.model.city,
+                                    isLoading: loc.isLoadingCities,
+                                    enabled: widget.model.state.isNotEmpty,
+                                    hint: widget.model.state.isEmpty ? 'State' : 'City',
+                                    onChanged: (v) {
+                                      setState(() => widget.model.city = v ?? '');
+                                      loc.onCityChanged(v);
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 16),
                   const WizardLabel('Address', required: false),

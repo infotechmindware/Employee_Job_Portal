@@ -6,6 +6,7 @@ import 'step2_details.dart';
 import 'step3_pay.dart';
 import 'step4_description.dart';
 import 'step5_review.dart';
+import '../../../services/job_service.dart';
 
 class PostJobWizard extends StatefulWidget {
   const PostJobWizard({super.key});
@@ -60,9 +61,39 @@ class _PostJobWizardState extends State<PostJobWizard>
     });
   }
 
-  void _onPublish() {
-    Navigator.of(context).pop(); // Close wizard
-    _showSuccessBottomSheet();
+  bool _isPublishing = false;
+
+  void _onPublish() async {
+    if (_isPublishing) return;
+
+    setState(() => _isPublishing = true);
+
+    try {
+      final result = await JobService.createJob(_model.toJson());
+
+      if (!mounted) return;
+
+      if (result['success']) {
+        Navigator.of(context).pop(); // Close wizard
+        _showSuccessBottomSheet();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Failed to publish job'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isPublishing = false);
+    }
   }
 
   void _showSuccessBottomSheet() {
@@ -133,6 +164,7 @@ class _PostJobWizardState extends State<PostJobWizard>
                   model: _model,
                   onBack: () => _goToStep(3),
                   onPublish: _onPublish,
+                  isPublishing: _isPublishing,
                 ),
               ],
             ),

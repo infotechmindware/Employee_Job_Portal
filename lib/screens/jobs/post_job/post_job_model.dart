@@ -35,4 +35,30 @@ class PostJobModel extends ChangeNotifier {
   List<String> qualifications = [];
 
   void notify() => notifyListeners();
+
+  Map<String, dynamic> toJson() {
+    return {
+      'title': jobTitle,
+      'description': description,
+      'industry': industry,
+      'employment_type': employmentType.toLowerCase().replaceAll(' ', '_'),
+      'workplace_type': workplaceType.toLowerCase(),
+      'country': country,
+      'state': state,
+      'city': city,
+      'address': address,
+      'vacancies': openings,
+      'experience_level': experience,
+      'salary_min': double.tryParse(minSalary) ?? 0,
+      'salary_max': double.tryParse(maxSalary) ?? 0,
+      'fixed_salary': double.tryParse(fixedSalary) ?? 0,
+      'salary_type': salaryType.toLowerCase(),
+      'salary_frequency': salaryFrequency.toLowerCase(),
+      'currency': 'INR', // Default as per requirements
+      'skills': skills,
+      'benefits': benefits,
+      'language': jobLanguage,
+      'urgency': hiringUrgency,
+    };
+  }
 }
