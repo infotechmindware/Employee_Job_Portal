@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart'; // Added for kDebugMode
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -6,9 +7,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 class AuthService {
   static const String baseUrl = 'https://mindwareinfotech.com/api/v1';
 
+  // Temporary flag to bypass auth during development
+  static const bool skipAuth = true;
+
   Future<http.Response> _post(String endpoint, Map<String, dynamic> body, {bool requireAuth = false}) async {
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
+    final token = await getToken(); // Use getToken() to leverage the bypass
 
     Map<String, String> headers = {
       'Content-Type': 'application/json',
@@ -148,6 +152,9 @@ class AuthService {
   }
 
   Future<String?> getToken() async {
+    if (kDebugMode && skipAuth) {
+      return "temp_testing_token";
+    }
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('token');
   }
@@ -159,8 +166,7 @@ class AuthService {
 
   Future<Map<String, dynamic>> getProfile() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
+      final token = await getToken();
       
       final getResponse = await http.get(
         Uri.parse('$baseUrl/employer/profile'),
@@ -187,8 +193,7 @@ class AuthService {
 
   Future<Map<String, dynamic>> updateProfile(Map<String, String> fields, {Map<String, File>? files}) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
+      final token = await getToken();
 
       var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/employer/profile'));
       request.headers.addAll({

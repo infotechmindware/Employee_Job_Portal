@@ -1,0 +1,38 @@
+import 'package:flutter/material.dart';
+
+/// Shared state model passed through all 5 wizard steps
+class PostJobModel extends ChangeNotifier {
+  // Step 1 — Basics
+  String jobTitle = '';
+  String industry = '';
+  String employmentType = '';
+  String country = '';
+  String state = '';
+  String city = '';
+  int openings = 1;
+  String workplaceType = '';
+  String address = '';
+
+  // Step 2 — Details
+  String jobLanguage = 'English';
+  String experience = '';
+  String hiringUrgency = '';
+  String jobTimings = '';
+  String interviewTimings = '';
+
+  // Step 3 — Pay & Benefits
+  String salaryType = 'Range'; // Range / Fixed / Negotiable
+  String minSalary = '';
+  String maxSalary = '';
+  String fixedSalary = '';
+  String salaryFrequency = 'Monthly';
+  bool hasBonus = false;
+  List<String> benefits = [];
+  List<String> skills = [];
+
+  // Step 4 — Description
+  String description = '';
+  List<String> qualifications = [];
+
+  void notify() => notifyListeners();
+}

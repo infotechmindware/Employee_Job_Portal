@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../theme/app_colors.dart';
 import '../../providers/navigation_provider.dart';
+import 'post_job/post_job_wizard.dart';
 
 class JobsScreen extends ConsumerStatefulWidget {
   const JobsScreen({super.key});
@@ -107,7 +108,7 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
             ],
           ),
           child: ElevatedButton.icon(
-            onPressed: () {},
+            onPressed: () => _openWizard(),
             icon: const Icon(LucideIcons.plus, size: 18),
             label: const Text('Post a Job'),
             style: ElevatedButton.styleFrom(
@@ -430,7 +431,7 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
           ),
           const SizedBox(height: 32),
           ElevatedButton.icon(
-            onPressed: () {},
+            onPressed: () => _openWizard(),
             icon: const Icon(LucideIcons.plus, size: 18),
             label: const Text('Post a job'),
             style: ElevatedButton.styleFrom(
@@ -442,6 +443,14 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+  void _openWizard() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => const PostJobWizard(),
       ),
     );
   }

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +6,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../theme/app_colors.dart';
 import 'widgets/auth_layout.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/auth_service.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -64,6 +66,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   void _handleLogin() async {
+    if (kDebugMode && AuthService.skipAuth) {
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/dashboard');
+      }
+      return;
+    }
+
     final identifier = _isEmailLogin ? _emailController.text : _mobileController.text;
     final password = _isEmailLogin ? _passwordController.text : _otpController.text;
     final emailOtp = _isEmailLogin ? _emailOtpController.text.trim() : null;

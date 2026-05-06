@@ -388,7 +388,7 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
           _buildDropdown(
             'State *',
             _selectedState,
-            _selectedCountry == 'India' ? 'Select state' : 'Not available',
+            _selectedCountry == 'India' ? 'State' : 'Not available',
             _selectedCountry == 'India' ? (List<String>.from(LocationData.indiaStatesAndDistricts.keys)..sort()) : [],
             (val) {
               setState(() {
@@ -400,7 +400,7 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
           _buildDropdown(
             'District / City *',
             _selectedCity,
-            _selectedState == null ? 'Select state first' : 'Select district',
+            _selectedState == null ? 'City' : 'City',
             _selectedState != null ? (List<String>.from(LocationData.indiaStatesAndDistricts[_selectedState]!)..sort()) : [],
             (val) => setState(() => _selectedCity = val),
           ),
