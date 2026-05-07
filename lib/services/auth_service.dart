@@ -228,4 +228,37 @@ class AuthService {
       return {'success': false, 'message': 'Network error: $e'};
     }
   }
+  Future<Map<String, dynamic>> reverseGeocode(double lat, double lng) async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://www.mindwareinfotech.com/api/geo/reverse?lat=$lat&lon=$lng'),
+        headers: {'Accept': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        return {'success': true, 'data': jsonDecode(response.body)};
+      } else {
+        return {'success': false, 'message': 'Reverse geocoding failed: ${response.statusCode}'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Geocoding error: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> searchLocation(String query) async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://www.mindwareinfotech.com/api/geo/search?q=${Uri.encodeComponent(query)}&limit=1'),
+        headers: {'Accept': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        return {'success': true, 'data': jsonDecode(response.body)};
+      } else {
+        return {'success': false, 'message': 'Location search failed: ${response.statusCode}'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Search error: $e'};
+    }
+  }
 }

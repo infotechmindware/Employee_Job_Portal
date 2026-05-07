@@ -13,6 +13,7 @@ import '../../providers/profile_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../services/auth_service.dart';
 import '../../data/location_data.dart';
+import 'package:dropdown_search/dropdown_search.dart';
 
 class ProfileStepperScreen extends ConsumerStatefulWidget {
   const ProfileStepperScreen({super.key});
@@ -30,7 +31,6 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
     _websiteController = TextEditingController();
     _descriptionController = TextEditingController();
     _postalController = TextEditingController();
-    _emailController = TextEditingController();
     _addressController = TextEditingController();
     
     // Default to Pankaj Plaza, Dwarka coordinates for preview
@@ -42,11 +42,12 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
+    _addressDebounce?.cancel();
     _companyNameController.dispose();
     _websiteController.dispose();
     _descriptionController.dispose();
     _postalController.dispose();
-    _emailController.dispose();
     _addressController.dispose();
     _mapController?.dispose();
     super.dispose();
@@ -56,15 +57,16 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
   LatLng? _currentLatLng;
   GoogleMapController? _mapController;
   bool _isLocating = false;
+  bool _isSearching = false;
   bool _isLoading = false;
   Timer? _searchDebounce;
+  Timer? _addressDebounce;
 
   // Form Controllers
   late TextEditingController _companyNameController;
   late TextEditingController _websiteController;
   late TextEditingController _descriptionController;
   late TextEditingController _postalController;
-  late TextEditingController _emailController;
   late TextEditingController _addressController;
 
   // Selection states
@@ -76,28 +78,28 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
   String? _selectedCompanySize;
 
 
-  final List<String> _countries = [
-    'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Antigua and Barbuda', 'Argentina', 'Armenia', 'Australia', 'Austria',
-    'Azerbaijan', 'Bahamas', 'Bahrain', 'Bangladesh', 'Barbados', 'Belarus', 'Belgium', 'Belize', 'Benin', 'Bhutan',
-    'Bolivia', 'Bosnia and Herzegovina', 'Botswana', 'Brazil', 'Brunei', 'Bulgaria', 'Burkina Faso', 'Burundi', 'Cabo Verde', 'Cambodia',
-    'Cameroon', 'Canada', 'Central African Republic', 'Chad', 'Chile', 'China', 'Colombia', 'Comoros', 'Congo', 'Costa Rica',
-    'Croatia', 'Cuba', 'Cyprus', 'Czech Republic', 'Denmark', 'Djibouti', 'Dominica', 'Dominican Republic', 'Ecuador', 'Egypt',
-    'El Salvador', 'Equatorial Guinea', 'Eritrea', 'Estonia', 'Eswatini', 'Ethiopia', 'Fiji', 'Finland', 'France', 'Gabon',
-    'Gambia', 'Georgia', 'Germany', 'Ghana', 'Greece', 'Grenada', 'Guatemala', 'Guinea', 'Guinea-Bissau', 'Guyana',
-    'Haiti', 'Honduras', 'Hungary', 'Iceland', 'India', 'Indonesia', 'Iran', 'Iraq', 'Ireland', 'Israel',
-    'Italy', 'Jamaica', 'Japan', 'Jordan', 'Kazakhstan', 'Kenya', 'Kiribati', 'Kuwait', 'Kyrgyzstan', 'Laos',
-    'Latvia', 'Lebanon', 'Lesotho', 'Liberia', 'Libya', 'Liechtenstein', 'Lithuania', 'Luxembourg', 'Madagascar', 'Malawi',
-    'Malaysia', 'Maldives', 'Mali', 'Malta', 'Marshall Islands', 'Mauritania', 'Mauritius', 'Mexico', 'Micronesia', 'Moldova',
-    'Monaco', 'Mongolia', 'Montenegro', 'Morocco', 'Mozambique', 'Myanmar', 'Namibia', 'Nauru', 'Nepal', 'Netherlands',
-    'New Zealand', 'Nicaragua', 'Niger', 'Nigeria', 'North Korea', 'North Macedonia', 'Norway', 'Oman', 'Pakistan', 'Palau',
-    'Palestine', 'Panama', 'Papua New Guinea', 'Paraguay', 'Peru', 'Philippines', 'Poland', 'Portugal', 'Qatar', 'Romania',
-    'Russia', 'Rwanda', 'Saint Kitts and Nevis', 'Saint Lucia', 'Saint Vincent and the Grenadines', 'Samoa', 'San Marino', 'Sao Tome and Principe', 'Saudi Arabia', 'Senegal',
-    'Serbia', 'Seychelles', 'Sierra Leone', 'Singapore', 'Slovakia', 'Slovenia', 'Solomon Islands', 'Somalia', 'South Africa', 'South Korea',
-    'South Sudan', 'Spain', 'Sri Lanka', 'Sudan', 'Suriname', 'Sweden', 'Switzerland', 'Syria', 'Taiwan', 'Tajikistan',
-    'Tanzania', 'Thailand', 'Timor-Leste', 'Togo', 'Tonga', 'Trinidad and Tobago', 'Tunisia', 'Turkey', 'Turkmenistan', 'Tuvalu',
-    'Uganda', 'Ukraine', 'United Arab Emirates', 'United Kingdom', 'United States', 'Uruguay', 'Uzbekistan', 'Vanuatu', 'Vatican City', 'Venezuela',
-    'Vietnam', 'Yemen', 'Zambia', 'Zimbabwe'
-  ];
+  final Map<String, String> _countryData = {
+    'AF': 'Afghanistan', 'AL': 'Albania', 'DZ': 'Algeria', 'AD': 'Andorra', 'AO': 'Angola', 'AG': 'Antigua and Barbuda', 'AR': 'Argentina', 'AM': 'Armenia', 'AU': 'Australia', 'AT': 'Austria',
+    'AZ': 'Azerbaijan', 'BS': 'Bahamas', 'BH': 'Bahrain', 'BD': 'Bangladesh', 'BB': 'Barbados', 'BY': 'Belarus', 'BE': 'Belgium', 'BZ': 'Belize', 'BJ': 'Benin', 'BT': 'Bhutan',
+    'BO': 'Bolivia', 'BA': 'Bosnia and Herzegovina', 'BW': 'Botswana', 'BR': 'Brazil', 'BN': 'Brunei', 'BG': 'Bulgaria', 'BF': 'Burkina Faso', 'BI': 'Burundi', 'CV': 'Cabo Verde', 'KH': 'Cambodia',
+    'CM': 'Cameroon', 'CA': 'Canada', 'CF': 'Central African Republic', 'TD': 'Chad', 'CL': 'Chile', 'CN': 'China', 'CO': 'Colombia', 'KM': 'Comoros', 'CG': 'Congo', 'CR': 'Costa Rica',
+    'HR': 'Croatia', 'CU': 'Cuba', 'CY': 'Cyprus', 'CZ': 'Czech Republic', 'DK': 'Denmark', 'DJ': 'Djibouti', 'DM': 'Dominica', 'DO': 'Dominican Republic', 'EC': 'Ecuador', 'EG': 'Egypt',
+    'SV': 'El Salvador', 'GQ': 'Equatorial Guinea', 'ER': 'Eritrea', 'EE': 'Estonia', 'SZ': 'Eswatini', 'ET': 'Ethiopia', 'FJ': 'Fiji', 'FI': 'Finland', 'FR': 'France', 'GA': 'Gabon',
+    'GM': 'Gambia', 'GE': 'Georgia', 'DE': 'Germany', 'GH': 'Ghana', 'GR': 'Greece', 'GD': 'Grenada', 'GT': 'Guatemala', 'GN': 'Guinea', 'GW': 'Guinea-Bissau', 'GY': 'Guyana',
+    'HT': 'Haiti', 'HN': 'Honduras', 'HU': 'Hungary', 'IS': 'Iceland', 'IN': 'India', 'ID': 'Indonesia', 'IR': 'Iran', 'IQ': 'Iraq', 'IE': 'Ireland', 'IL': 'Israel',
+    'IT': 'Italy', 'JM': 'Jamaica', 'JP': 'Japan', 'JO': 'Jordan', 'KZ': 'Kazakhstan', 'KE': 'Kenya', 'KI': 'Kiribati', 'KW': 'Kuwait', 'KG': 'Kyrgyzstan', 'LA': 'Laos',
+    'LV': 'Latvia', 'LB': 'Lebanon', 'LS': 'Lesotho', 'LR': 'Liberia', 'LY': 'Libya', 'LI': 'Liechtenstein', 'LT': 'Lithuania', 'LU': 'Luxembourg', 'MG': 'Madagascar', 'MW': 'Malawi',
+    'MY': 'Malaysia', 'MV': 'Maldives', 'ML': 'Mali', 'MT': 'Malta', 'MH': 'Marshall Islands', 'MR': 'Mauritania', 'MU': 'Mauritius', 'MX': 'Mexico', 'FM': 'Micronesia', 'MD': 'Moldova',
+    'MC': 'Monaco', 'MN': 'Mongolia', 'ME': 'Montenegro', 'MA': 'Morocco', 'MZ': 'Mozambique', 'MM': 'Myanmar', 'NA': 'Namibia', 'NR': 'Nauru', 'NP': 'Nepal', 'NL': 'Netherlands',
+    'NZ': 'New Zealand', 'NI': 'Nicaragua', 'NE': 'Niger', 'NG': 'Nigeria', 'KP': 'North Korea', 'MK': 'North Macedonia', 'NO': 'Norway', 'OM': 'Oman', 'PK': 'Pakistan', 'PW': 'Palau',
+    'PS': 'Palestine', 'PA': 'Panama', 'PG': 'Papua New Guinea', 'PY': 'Paraguay', 'PE': 'Peru', 'PH': 'Philippines', 'PL': 'Poland', 'PT': 'Portugal', 'QA': 'Qatar', 'RO': 'Romania',
+    'RU': 'Russia', 'RW': 'Rwanda', 'KN': 'Saint Kitts and Nevis', 'LC': 'Saint Lucia', 'VC': 'Saint Vincent and the Grenadines', 'WS': 'Samoa', 'SM': 'San Marino', 'ST': 'Sao Tome and Principe', 'SA': 'Saudi Arabia', 'SN': 'Senegal',
+    'RS': 'Serbia', 'SC': 'Seychelles', 'SL': 'Sierra Leone', 'SG': 'Singapore', 'SK': 'Slovakia', 'SI': 'Slovenia', 'SB': 'Solomon Islands', 'SO': 'Somalia', 'ZA': 'South Africa', 'KR': 'South Korea',
+    'SS': 'South Sudan', 'ES': 'Spain', 'LK': 'Sri Lanka', 'SD': 'Sudan', 'SR': 'Suriname', 'SE': 'Sweden', 'CH': 'Switzerland', 'SY': 'Syria', 'TW': 'Taiwan', 'TJ': 'Tajikistan',
+    'TZ': 'Tanzania', 'TH': 'Thailand', 'TL': 'Timor-Leste', 'TG': 'Togo', 'TO': 'Tonga', 'TT': 'Trinidad and Tobago', 'TN': 'Tunisia', 'TR': 'Turkey', 'TM': 'Turkmenistan', 'TV': 'Tuvalu',
+    'UG': 'Uganda', 'UA': 'Ukraine', 'AE': 'United Arab Emirates', 'GB': 'United Kingdom', 'US': 'United States', 'UY': 'Uruguay', 'UZ': 'Uzbekistan', 'VU': 'Vanuatu', 'VA': 'Vatican City', 'VE': 'Venezuela',
+    'VN': 'Vietnam', 'YE': 'Yemen', 'ZM': 'Zambia', 'ZW': 'Zimbabwe'
+  };
 
   final List<String> _companyTypes = [
     'Proprietorship',
@@ -370,53 +372,128 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
       title: 'Address',
       icon: LucideIcons.mapPin,
       children: [
-        _buildDropdown(
-          'Country *',
-          _selectedCountry,
-          'Select country',
-          _countries,
-          (val) {
-            setState(() {
-              _selectedCountry = val;
-              _selectedState = null;
-              _selectedCity = null;
-            });
-          },
+        // Country Dropdown with Flags
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Country *', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF475569))),
+            const SizedBox(height: 8),
+            DropdownSearch<String>(
+              items: (filter, loadProps) => _countryData.entries.map((e) => "${e.key} ${e.value}").toList(),
+              decoratorProps: DropDownDecoratorProps(
+                decoration: InputDecoration(
+                  hintText: 'Select country',
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  filled: true,
+                  fillColor: const Color(0xFFF8FAFC),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                ),
+              ),
+              popupProps: PopupProps.menu(
+                showSearchBox: true,
+                itemBuilder: (ctx, item, isSelected, isHover) {
+                  final code = item.split(' ')[0].toLowerCase();
+                  return ListTile(
+                    leading: Image.network(
+                      'https://flagcdn.com/24x18/$code.png',
+                      width: 24,
+                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.flag, size: 24),
+                    ),
+                    title: Text(item),
+                  );
+                },
+              ),
+              selectedItem: (_selectedCountry != null && _selectedCountry!.isNotEmpty && _countryData.values.contains(_selectedCountry)) 
+                ? "${_countryData.keys.firstWhere((k) => _countryData[k] == _selectedCountry, orElse: () => '')} $_selectedCountry".trim() 
+                : null,
+              onSelected: (val) {
+                if (val != null) {
+                  setState(() {
+                    _selectedCountry = val.substring(3); // Remove code
+                    _selectedState = null;
+                    _selectedCity = null;
+                  });
+                  _onAddressChanged();
+                }
+              },
+            ),
+          ],
         ),
         const SizedBox(height: 20),
         _buildResponsiveFields(isDesktop, [
-          _buildDropdown(
-            'State *',
-            _selectedState,
-            _selectedCountry == 'India' ? 'State' : 'Not available',
-            _selectedCountry == 'India' ? (List<String>.from(LocationData.indiaStatesAndDistricts.keys)..sort()) : [],
-            (val) {
-              setState(() {
-                _selectedState = val;
-                _selectedCity = null;
-              });
-            },
+          // State Dropdown
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('State *', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF475569))),
+              const SizedBox(height: 8),
+              DropdownSearch<String>(
+                items: (filter, loadProps) => _selectedCountry == 'India' ? (List<String>.from(LocationData.indiaStatesAndDistricts.keys)..sort()) : [],
+                decoratorProps: DropDownDecoratorProps(
+                  decoration: InputDecoration(
+                    hintText: 'Select state',
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    filled: true,
+                    fillColor: const Color(0xFFF8FAFC),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                  ),
+                ),
+                popupProps: const PopupProps.menu(showSearchBox: true),
+                selectedItem: _selectedState,
+                onSelected: (val) {
+                  setState(() {
+                    _selectedState = val;
+                    _selectedCity = null;
+                  });
+                  _onAddressChanged();
+                },
+              ),
+            ],
           ),
-          _buildDropdown(
-            'District / City *',
-            _selectedCity,
-            _selectedState == null ? 'City' : 'City',
-            _selectedState != null ? (List<String>.from(LocationData.indiaStatesAndDistricts[_selectedState]!)..sort()) : [],
-            (val) => setState(() => _selectedCity = val),
+          // City Dropdown
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('City *', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF475569))),
+              const SizedBox(height: 8),
+              DropdownSearch<String>(
+                items: (filter, loadProps) => _selectedState != null ? (List<String>.from(LocationData.indiaStatesAndDistricts[_selectedState]!)..sort()) : [],
+                decoratorProps: DropDownDecoratorProps(
+                  decoration: InputDecoration(
+                    hintText: 'Select city',
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    filled: true,
+                    fillColor: const Color(0xFFF8FAFC),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                  ),
+                ),
+                popupProps: const PopupProps.menu(showSearchBox: true),
+                selectedItem: _selectedCity,
+                onSelected: (val) {
+                  setState(() => _selectedCity = val);
+                  _onAddressChanged();
+                },
+              ),
+            ],
           ),
         ]),
         const SizedBox(height: 20),
-        _buildResponsiveFields(isDesktop, [
-          _buildField('Postal Code *', 'Enter postal code', controller: _postalController),
-          _buildField('Official Email *', 'contact@company.com', controller: _emailController),
-        ]),
+        _buildField(
+          'Postal Code *', 
+          'Enter postal code', 
+          controller: _postalController,
+          onChanged: (val) => _onAddressChanged(),
+        ),
         const SizedBox(height: 20),
         _buildField(
           'Street Address *', 
           'Enter full street address', 
           maxLines: 3, 
           controller: _addressController,
-          onChanged: (val) => _searchLocationFromAddress(val),
+          onChanged: (val) => _onAddressChanged(),
         ),
         const SizedBox(height: 24),
         SizedBox(
@@ -445,34 +522,32 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
             border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
           clipBehavior: Clip.antiAlias,
-          child: _currentLatLng == null
-              ? const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(LucideIcons.map, size: 32, color: Color(0xFF94A3B8)),
-                      SizedBox(height: 8),
-                      Text('Map Preview', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
-                    ],
+          child: GoogleMap(
+                  initialCameraPosition: CameraPosition(
+                    target: _currentLatLng ?? const LatLng(20.5937, 78.9629), // Default to India center
+                    zoom: _currentLatLng == null ? 5 : 16,
                   ),
-                )
-              : GoogleMap(
-                  initialCameraPosition: CameraPosition(target: _currentLatLng!, zoom: 17),
-                  onMapCreated: (controller) => _mapController = controller,
+                  onMapCreated: (controller) {
+                    _mapController = controller;
+                    if (_currentLatLng != null) {
+                      _mapController?.animateCamera(CameraUpdate.newLatLngZoom(_currentLatLng!, 16));
+                    }
+                  },
                   onCameraMove: (position) {
                     setState(() {
                       _currentLatLng = position.target;
                     });
                   },
                   onCameraIdle: () {
-                    if (_currentLatLng != null && !_isLocating) {
+                    if (_currentLatLng != null && !_isLocating && !_isSearching) {
                       _reverseGeocode(_currentLatLng!.latitude, _currentLatLng!.longitude);
                     }
+                    _isSearching = false; // Reset search flag
                   },
                   markers: {
                     Marker(
-                      markerId: const MarkerId('current'),
-                      position: _currentLatLng!,
+                      markerId: const MarkerId('location'),
+                      position: _currentLatLng ?? const LatLng(20.5937, 78.9629),
                       draggable: true,
                       onDragEnd: (newPosition) {
                         setState(() {
@@ -511,17 +586,71 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
     });
   }
 
+  void _onAddressChanged() {
+    if (_addressDebounce?.isActive ?? false) _addressDebounce!.cancel();
+    _addressDebounce = Timer(const Duration(milliseconds: 800), () {
+      _searchLocation();
+    });
+  }
+
+  Future<void> _searchLocation() async {
+    // Exact format requested: streetAddress,postalCode,city,state,country
+    final components = [
+      _addressController.text.trim(),
+      _postalController.text.trim(),
+      _selectedCity ?? '',
+      _selectedState ?? '',
+      _selectedCountry ?? '',
+    ];
+    final fullAddress = components.where((c) => c.isNotEmpty).join(',');
+    
+    if (fullAddress.isEmpty) return;
+
+    setState(() => _isSearching = true);
+    final result = await AuthService().searchLocation(fullAddress);
+    if (result['success']) {
+      final List data = result['data'];
+      if (data.isNotEmpty) {
+        final lat = double.tryParse(data[0]['lat'].toString());
+        final lon = double.tryParse(data[0]['lon'].toString());
+        if (lat != null && lon != null) {
+          final position = LatLng(lat, lon);
+          
+          if (_currentLatLng?.latitude == lat && _currentLatLng?.longitude == lon) {
+            setState(() => _isSearching = false);
+            return;
+          }
+
+          setState(() {
+            _currentLatLng = position;
+          });
+          
+          if (_mapController != null) {
+            await _mapController!.animateCamera(CameraUpdate.newLatLngZoom(position, 16));
+          } else {
+            setState(() => _isSearching = false);
+          }
+        } else {
+          setState(() => _isSearching = false);
+        }
+      } else {
+        setState(() => _isSearching = false);
+      }
+    } else {
+      setState(() => _isSearching = false);
+    }
+  }
+
   Future<void> _reverseGeocode(double lat, double lng) async {
     try {
-      List<Placemark> placemarks = await placemarkFromCoordinates(lat, lng);
-      if (placemarks.isNotEmpty) {
-        final place = placemarks.first;
-        final newPostal = place.postalCode ?? '';
-        final newAddress = [
-          if (place.street != null && place.street!.isNotEmpty) place.street,
-          if (place.subLocality != null && place.subLocality!.isNotEmpty) place.subLocality,
-          if (place.locality != null && place.locality!.isNotEmpty) place.locality,
-        ].join(', ');
+      final result = await AuthService().reverseGeocode(lat, lng);
+      
+      if (result['success']) {
+        final data = result['data'];
+        final address = data['address'];
+        
+        final newPostal = address['postcode'] ?? '';
+        final newAddress = data['display_name'] ?? '';
 
         setState(() {
           if (_postalController.text != newPostal) {
@@ -530,15 +659,17 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
           if (_addressController.text != newAddress) {
             _addressController.text = newAddress;
           }
-          if (place.administrativeArea != null) {
+          
+          if (address['state'] != null) {
             final state = LocationData.indiaStatesAndDistricts.keys.firstWhere(
-              (s) => s.toLowerCase() == place.administrativeArea!.toLowerCase(),
+              (s) => s.toLowerCase() == address['state'].toString().toLowerCase(),
               orElse: () => _selectedState ?? '',
             );
+            
             if (state.isNotEmpty) {
               _selectedState = state;
               final district = LocationData.indiaStatesAndDistricts[state]?.firstWhere(
-                (d) => d.toLowerCase() == (place.subAdministrativeArea ?? place.locality ?? '').toLowerCase(),
+                (d) => d.toLowerCase() == (address['city_district'] ?? address['city'] ?? address['suburb'] ?? '').toString().toLowerCase(),
                 orElse: () => _selectedCity ?? '',
               );
               if (district != null && district.isNotEmpty) _selectedCity = district;
@@ -774,7 +905,6 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
         _websiteController.text = data['website'] ?? '';
         _descriptionController.text = data['description'] ?? '';
         _postalController.text = data['postal_code'] ?? '';
-        _emailController.text = data['email'] ?? '';
         _addressController.text = data['street_address'] ?? '';
         
         // Defensive checks for dropdown values
@@ -788,7 +918,7 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
           _selectedCompanySize = data['company_size'];
         }
         
-        if (_countries.contains(data['country'])) {
+        if (_countryData.values.contains(data['country'])) {
           _selectedCountry = data['country'];
         } else {
           _selectedCountry = 'India';
@@ -808,6 +938,9 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
             double.tryParse(data['lat'].toString()) ?? 28.5908,
             double.tryParse(data['lng'].toString()) ?? 77.0433,
           );
+        } else {
+          // If no lat/lng, try to search from address
+          _onAddressChanged();
         }
       });
     }
@@ -829,7 +962,6 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
       'state': _selectedState ?? '',
       'city': _selectedCity ?? '',
       'postal_code': _postalController.text,
-      'email': _emailController.text,
       'street_address': _addressController.text,
       'lat': _currentLatLng?.latitude.toString() ?? '',
       'lng': _currentLatLng?.longitude.toString() ?? '',
@@ -866,7 +998,6 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
                _selectedState != null &&
                _selectedCity != null &&
                _postalController.text.isNotEmpty &&
-               _emailController.text.isNotEmpty &&
                _addressController.text.isNotEmpty &&
                _currentLatLng != null;
       case 2:
