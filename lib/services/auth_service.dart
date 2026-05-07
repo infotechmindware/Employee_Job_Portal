@@ -8,7 +8,7 @@ class AuthService {
   static const String baseUrl = 'https://mindwareinfotech.com/api/v1';
 
   // Temporary flag to bypass auth during development
-  static const bool skipAuth = true;
+  static const bool skipAuth = false; // Disabled bypass to allow real token testing
 
   Future<http.Response> _post(String endpoint, Map<String, dynamic> body, {bool requireAuth = false}) async {
     final prefs = await SharedPreferences.getInstance();
@@ -34,11 +34,17 @@ class AuthService {
         'password': password,
       };
       if (emailOtp != null) {
-        body['otp'] = emailOtp;
-        body['purpose'] = 'auth';
+        body['email_otp'] = emailOtp;
       }
       
-      final response = await _post('/login', body);
+      final response = await http.post(
+        Uri.parse('https://mindwareinfotech.com/api/v1/login'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(body),
+      );
 
       print('Login Response: ${response.body}');
 
@@ -46,8 +52,13 @@ class AuthService {
         final data = jsonDecode(response.body);
         if (response.statusCode == 200) {
           final prefs = await SharedPreferences.getInstance();
-          final token = data['data'] != null ? data['data']['token'] : data['token'];
+          // Extract token from either 'token', 'access_token', or nested 'data' object
+          String? token = data['token'] ?? data['access_token'];
+          if (token == null && data['data'] != null) {
+            token = data['data']['token'] ?? data['data']['access_token'];
+          }
           await prefs.setString('token', token ?? '');
+          print("TOKEN SAVED: $token");
           return {'success': true, 'data': data};
         } else {
           return {'success': false, 'message': data['message'] ?? 'Login failed: ${response.statusCode}'};
@@ -62,18 +73,61 @@ class AuthService {
 
   Future<Map<String, dynamic>> sendEmailOtp(String email) async {
     try {
-      final response = await _post('/send-email-otp', {'email': email});
+      // Trying the API-specific endpoint first to avoid CSRF/Session issues found on web routes
+      // Pattern matched with /api/v1/send-phone-otp seen in Swagger
+      final response = await http.post(
+        Uri.parse('https://mindwareinfotech.com/api/v1/send-email-otp'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'email': email,
+          'purpose': 'auth',
+        }),
+      );
+
+      print('Send OTP Status: ${response.statusCode}');
       print('Send OTP Response: ${response.body}');
-      if (response.body.startsWith('{')) {
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
-        if (response.statusCode == 200) {
-          return {'success': true, 'message': data['message'] ?? 'OTP sent successfully'};
-        } else {
-          return {'success': false, 'message': data['message'] ?? 'Failed to send OTP'};
+        return {'success': true, 'message': data['message'] ?? 'OTP sent successfully'};
+      } 
+      
+      // If 404, fallback to the web route but with extra headers to handle CSRF-like environments
+      if (response.statusCode == 404 || response.statusCode == 403) {
+        final fallbackResponse = await http.post(
+          Uri.parse('https://www.mindwareinfotech.com/auth/email/send-otp'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest', // Tells Laravel it's an AJAX request
+          },
+          body: jsonEncode({
+            'email': email,
+            'purpose': 'auth',
+          }),
+        );
+        
+        print('Fallback OTP Status: ${fallbackResponse.statusCode}');
+        print('Fallback OTP Response: ${fallbackResponse.body}');
+        
+        if (fallbackResponse.body.startsWith('{')) {
+          final data = jsonDecode(fallbackResponse.body);
+          if (fallbackResponse.statusCode == 200 || data['success'] == true) {
+            return {'success': true, 'message': data['message'] ?? 'OTP sent successfully'};
+          } else {
+            // Handle the "session refreshed" error by suggesting a retry which might have the cookie now
+            if (data['error'] != null && data['error'].contains('session was refreshed')) {
+              return {'success': false, 'message': 'Session initialized. Please tap "Send OTP" again.'};
+            }
+            return {'success': false, 'message': data['message'] ?? data['error'] ?? 'Failed to send OTP'};
+          }
         }
-      } else {
-        return {'success': false, 'message': 'Invalid response format'};
       }
+      
+      return {'success': false, 'message': 'Failed to send OTP (${response.statusCode})'};
     } catch (e) {
       return {'success': false, 'message': 'Network error: $e'};
     }
@@ -169,7 +223,7 @@ class AuthService {
       final token = await getToken();
       
       final getResponse = await http.get(
-        Uri.parse('$baseUrl/employer/profile'),
+        Uri.parse('https://www.mindwareinfotech.com/api/profile'),
         headers: {
           'Accept': 'application/json',
           'Authorization': 'Bearer $token',
@@ -195,7 +249,7 @@ class AuthService {
     try {
       final token = await getToken();
 
-      var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/employer/profile'));
+      var request = http.MultipartRequest('POST', Uri.parse('https://www.mindwareinfotech.com/api/profile'));
       request.headers.addAll({
         'Accept': 'application/json',
         'Authorization': 'Bearer $token',

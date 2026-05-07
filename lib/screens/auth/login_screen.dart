@@ -383,14 +383,69 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ],
         ),
         const SizedBox(height: 32),
+        
         const Text('Welcome Back', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
-        const Text('Login to your candidate or employer account', style: TextStyle(color: Colors.grey)),
+        const Text('Login to your candidate or employer account', style: TextStyle(color: Color(0xFF64748B))),
         const SizedBox(height: 32),
         
+        // Success/Error Banners based on state
+        if (ref.watch(authProvider).error != null)
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEF2F2),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFFCA5A5)),
+            ),
+            child: Row(
+              children: [
+                const Icon(LucideIcons.alertCircle, color: Color(0xFFB91C1C), size: 18),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    ref.watch(authProvider).error!,
+                    style: const TextStyle(color: Color(0xFFB91C1C), fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => ref.read(authProvider.notifier).clearError(),
+                  child: const Icon(LucideIcons.x, color: Color(0xFFB91C1C), size: 14),
+                ),
+              ],
+            ),
+          ),
+
+        if (ref.watch(authProvider).isLoading && _isOtpButtonDisabled) // Mocking a success banner for OTP sent
+           Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFECFDF5),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFF6EE7B7)),
+            ),
+            child: const Row(
+              children: [
+                Icon(LucideIcons.checkCircle, color: Color(0xFF047857), size: 18),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    "OTP sent to your email",
+                    style: TextStyle(color: Color(0xFF047857), fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        
         Container(
+          height: 48,
           decoration: BoxDecoration(
-            color: Colors.grey[100],
+            color: const Color(0xFFF1F5F9),
             borderRadius: BorderRadius.circular(12),
           ),
           padding: const EdgeInsets.all(4),
@@ -400,14 +455,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: GestureDetector(
                   onTap: () => setState(() => _isEmailLogin = true),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
                     decoration: BoxDecoration(
                       color: _isEmailLogin ? Colors.white : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: _isEmailLogin ? [const BoxShadow(color: Colors.black12, blurRadius: 4)] : [],
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: _isEmailLogin ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))] : [],
                     ),
                     alignment: Alignment.center,
-                    child: const Text('Email Password', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    child: Text(
+                      'Email Password',
+                      style: TextStyle(
+                        fontWeight: _isEmailLogin ? FontWeight.w700 : FontWeight.w600,
+                        fontSize: 13,
+                        color: _isEmailLogin ? const Color(0xFF1E293B) : const Color(0xFF64748B),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -415,14 +476,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: GestureDetector(
                   onTap: () => setState(() => _isEmailLogin = false),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
                     decoration: BoxDecoration(
                       color: !_isEmailLogin ? Colors.white : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: !_isEmailLogin ? [const BoxShadow(color: Colors.black12, blurRadius: 4)] : [],
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: !_isEmailLogin ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))] : [],
                     ),
                     alignment: Alignment.center,
-                    child: const Text('Mobile OTP', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    child: Text(
+                      'Mobile OTP',
+                      style: TextStyle(
+                        fontWeight: !_isEmailLogin ? FontWeight.w700 : FontWeight.w600,
+                        fontSize: 13,
+                        color: !_isEmailLogin ? const Color(0xFF1E293B) : const Color(0xFF64748B),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -454,9 +521,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   decoration: InputDecoration(
                     counterText: '',
                     hintText: '6-digit OTP',
-                    hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+                    hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
                     filled: true,
-                    fillColor: Colors.grey[100],
+                    fillColor: const Color(0xFFF1F5F9),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -464,28 +531,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
+                      borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.primary),
+                      borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(
                 flex: 1,
-                child: ElevatedButton(
-                  onPressed: (_isOtpButtonDisabled || ref.watch(authProvider).isLoading) ? null : _sendEmailOtp,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFFEDD5),
-                    foregroundColor: const Color(0xFFEA580C),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    elevation: 0,
+                child: SizedBox(
+                  height: 54,
+                  child: ElevatedButton(
+                    onPressed: (_isOtpButtonDisabled || ref.watch(authProvider).isLoading) ? null : _sendEmailOtp,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFFEDD5),
+                      foregroundColor: const Color(0xFFEA580C),
+                      padding: EdgeInsets.zero,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
+                    ),
+                    child: const Text('Send OTP', style: TextStyle(fontWeight: FontWeight.w700)),
                   ),
-                  child: const Text('Send OTP', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ),
             ],
@@ -604,14 +674,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
         const SizedBox(height: 24),
         Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Expanded(child: _buildSocialBtn('assets/images/google.webp')),
+            _buildSocialBtn('assets/images/google.webp'),
             const SizedBox(width: 16),
-            Expanded(child: _buildSocialBtn('assets/images/fb.jpg')),
+            _buildSocialBtn('assets/images/fb.jpg'),
             const SizedBox(width: 16),
-            Expanded(child: _buildSocialBtn('assets/images/link.jpg')),
+            _buildSocialBtn('assets/images/link.jpg'),
             const SizedBox(width: 16),
-            Expanded(child: _buildSocialBtn('assets/images/microsoft.jpg')),
+            _buildSocialBtn('assets/images/microsoft.jpg'),
           ],
         ),
         const SizedBox(height: 32),
@@ -619,10 +690,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           child: Wrap(
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              const Text("Don't have an account? ", style: TextStyle(color: Colors.grey)),
+              const Text("Don't have an account? ", style: TextStyle(color: Color(0xFF64748B), fontSize: 14)),
               InkWell(
                 onTap: () => Navigator.pushNamed(context, '/register'),
-                child: const Text('Create employer account', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                child: const Text('Create candidate account', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w800, fontSize: 14)),
               ),
             ],
           ),
@@ -685,18 +756,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Widget _buildSocialBtn(String imagePath) {
     return Container(
-      height: 48,
+      width: 54,
+      height: 54,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey[200]!),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       alignment: Alignment.center,
-      child: Image.asset(
-        imagePath,
-        width: 24,
-        height: 24,
-        fit: BoxFit.contain,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.asset(
+          imagePath,
+          width: 28,
+          height: 28,
+          fit: BoxFit.contain,
+        ),
       ),
     );
   }
