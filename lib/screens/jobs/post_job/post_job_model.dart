@@ -61,4 +61,34 @@ class PostJobModel extends ChangeNotifier {
       'urgency': hiringUrgency,
     };
   }
+
+  void prefill(Map<String, dynamic> data) {
+    jobTitle = data['title'] ?? '';
+    industry = data['industry'] ?? '';
+    employmentType = data['employment_type'] ?? '';
+    country = data['country'] ?? '';
+    state = data['state'] ?? '';
+    city = data['city'] ?? '';
+    openings = data['vacancies'] ?? 1;
+    workplaceType = data['workplace_type'] ?? '';
+    address = data['address'] ?? '';
+    
+    jobLanguage = data['language'] ?? 'English';
+    experience = data['experience_level'] ?? '';
+    hiringUrgency = data['urgency'] ?? '';
+    jobTimings = data['job_timings'] ?? '';
+    interviewTimings = data['interview_timings'] ?? '';
+    
+    salaryType = data['salary_type']?.toString().toUpperCase() == 'FIXED' ? 'Fixed' : 'Range';
+    minSalary = data['salary_min']?.toString() ?? '';
+    maxSalary = data['salary_max']?.toString() ?? '';
+    fixedSalary = data['fixed_salary']?.toString() ?? '';
+    salaryFrequency = data['salary_frequency'] ?? 'Monthly';
+    
+    skills = List<String>.from(data['skills'] ?? []);
+    benefits = List<String>.from(data['benefits'] ?? []);
+    description = data['description'] ?? '';
+    
+    notify();
+  }
 }

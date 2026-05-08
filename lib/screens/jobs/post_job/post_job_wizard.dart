@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'post_job_model.dart';
 import 'wizard_widgets.dart';
 import 'step1_basics.dart';
@@ -7,9 +8,11 @@ import 'step3_pay.dart';
 import 'step4_description.dart';
 import 'step5_review.dart';
 import '../../../services/job_service.dart';
+import '../../../providers/employer_jobs_provider.dart';
 
 class PostJobWizard extends StatefulWidget {
-  const PostJobWizard({super.key});
+  final Map<String, dynamic>? jobData;
+  const PostJobWizard({super.key, this.jobData});
 
   @override
   State<PostJobWizard> createState() => _PostJobWizardState();
@@ -33,6 +36,9 @@ class _PostJobWizardState extends State<PostJobWizard>
   @override
   void initState() {
     super.initState();
+    if (widget.jobData != null) {
+      _model.prefill(widget.jobData!);
+    }
     _pageController = PageController();
     _animController = AnimationController(
       vsync: this,
@@ -69,17 +75,30 @@ class _PostJobWizardState extends State<PostJobWizard>
     setState(() => _isPublishing = true);
 
     try {
-      final result = await JobService.createJob(_model.toJson());
+      final Map<String, dynamic> result;
+      if (widget.jobData != null && widget.jobData!['id'] != null) {
+        result = await JobService.updateJob(widget.jobData!['id'], _model.toJson());
+      } else {
+        result = await JobService.createJob(_model.toJson());
+      }
 
       if (!mounted) return;
 
       if (result['success']) {
+        // Refresh the jobs list automatically
+        try {
+          final container = ProviderScope.containerOf(context, listen: false);
+          container.read(employerJobsProvider.notifier).fetchAll(showLoading: false);
+        } catch (e) {
+          print('Error refreshing jobs after publish: $e');
+        }
+
         Navigator.of(context).pop(); // Close wizard
         _showSuccessBottomSheet();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(result['message'] ?? 'Failed to publish job'),
+            content: Text(result['message'] ?? 'Failed to save job'),
             backgroundColor: Colors.redAccent,
             behavior: SnackBarBehavior.floating,
           ),

@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
-  static const String baseUrl = 'https://mindwareinfotech.com/api/v1';
+  static const String baseUrl = 'https://www.mindwareinfotech.com/api/v1';
 
   // Temporary flag to bypass auth during development
   static const bool skipAuth = false; // Disabled bypass to allow real token testing
@@ -32,18 +32,23 @@ class AuthService {
       final Map<String, dynamic> body = {
         'email': identifier,
         'password': password,
+        'role': 'candidate',
       };
       if (emailOtp != null) {
         body['email_otp'] = emailOtp;
       }
       
       final response = await http.post(
-        Uri.parse('https://mindwareinfotech.com/api/v1/login'),
+        Uri.parse('https://www.mindwareinfotech.com/api/v1/login'),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
         },
-        body: jsonEncode(body),
+        body: jsonEncode({
+          ...body,
+          'purpose': 'auth',
+        }),
       );
 
       print('Login Response: ${response.body}');
@@ -61,7 +66,43 @@ class AuthService {
           print("TOKEN SAVED: $token");
           return {'success': true, 'data': data};
         } else {
-          return {'success': false, 'message': data['message'] ?? 'Login failed: ${response.statusCode}'};
+          final errorMessage = data['message'] ?? 'Login failed: ${response.statusCode}';
+          
+          // Fallback to web-style login if API login fails with OTP error
+          if (errorMessage.toLowerCase().contains('otp') || errorMessage.toLowerCase().contains('expired')) {
+            print('API Login failed with OTP error, trying web-style fallback...');
+            final webResponse = await http.post(
+              Uri.parse('https://www.mindwareinfotech.com/login'),
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+              },
+              body: jsonEncode({
+                ...body,
+                'purpose': 'auth',
+              }),
+            );
+            
+            print('Web-style Login Status: ${webResponse.statusCode}');
+            print('Web-style Login Response: ${webResponse.body}');
+            
+            if (webResponse.body.startsWith('{')) {
+              final webData = jsonDecode(webResponse.body);
+              if (webResponse.statusCode == 200 || webData['success'] == true) {
+                final prefs = await SharedPreferences.getInstance();
+                String? token = webData['token'] ?? webData['access_token'];
+                if (token == null && webData['data'] != null) {
+                  token = webData['data']['token'] ?? webData['data']['access_token'];
+                }
+                await prefs.setString('token', token ?? '');
+                return {'success': true, 'data': webData};
+              }
+              return {'success': false, 'message': webData['message'] ?? errorMessage};
+            }
+          }
+          
+          return {'success': false, 'message': errorMessage};
         }
       } else {
         return {'success': false, 'message': 'Server error: Invalid response format (HTML received)'};
@@ -76,14 +117,16 @@ class AuthService {
       // Trying the API-specific endpoint first to avoid CSRF/Session issues found on web routes
       // Pattern matched with /api/v1/send-phone-otp seen in Swagger
       final response = await http.post(
-        Uri.parse('https://mindwareinfotech.com/api/v1/send-email-otp'),
+        Uri.parse('https://www.mindwareinfotech.com/api/v1/send-email-otp'),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
         },
         body: jsonEncode({
           'email': email,
           'purpose': 'auth',
+          'role': 'candidate',
         }),
       );
 
@@ -107,6 +150,7 @@ class AuthService {
           body: jsonEncode({
             'email': email,
             'purpose': 'auth',
+            'role': 'candidate',
           }),
         );
         
@@ -223,7 +267,7 @@ class AuthService {
       final token = await getToken();
       
       final getResponse = await http.get(
-        Uri.parse('https://www.mindwareinfotech.com/api/profile'),
+        Uri.parse('https://www.mindwareinfotech.com/api/v1/employer/profile'),
         headers: {
           'Accept': 'application/json',
           'Authorization': 'Bearer $token',
@@ -249,7 +293,7 @@ class AuthService {
     try {
       final token = await getToken();
 
-      var request = http.MultipartRequest('POST', Uri.parse('https://www.mindwareinfotech.com/api/profile'));
+      var request = http.MultipartRequest('POST', Uri.parse('https://www.mindwareinfotech.com/api/v1/employer/profile'));
       request.headers.addAll({
         'Accept': 'application/json',
         'Authorization': 'Bearer $token',
