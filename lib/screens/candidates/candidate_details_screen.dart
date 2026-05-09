@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -8,11 +9,31 @@ class CandidateDetailsScreen extends StatelessWidget {
   
   const CandidateDetailsScreen({super.key, required this.candidate});
 
+  String _val(dynamic value) {
+    if (value == null || value.toString().isEmpty || value.toString() == "null") return 'Not provided';
+    return value.toString();
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Standardize mapping based on web dashboard
+    final profile = candidate['candidate'] ?? candidate;
+    final name = candidate['full_name'] ?? profile['name'] ?? candidate['candidate_name'] ?? candidate['fullname'] ?? "Candidate #${candidate['candidate_user_id'] ?? candidate['id']}";
+    final jobTitle = _val(candidate['job_title'] ?? candidate['job']?['title']);
+    final email = _val(candidate['candidate_email'] ?? profile['email']);
+    final mobile = _val(candidate['candidate_mobile'] ?? profile['mobile'] ?? profile['phone']);
+    final location = _val(candidate['location_display'] ?? profile['location']);
+    final experience = _val(candidate['experience_years'] ?? profile['experience']);
+    final education = _val(candidate['education'] ?? profile['education']);
+    final expectedSalary = _val(candidate['expected_salary'] ?? profile['expected_salary']);
     final status = candidate['status']?.toString().toLowerCase() ?? 'applied';
-    final isShortlisted = status == 'shortlisted';
     
+    // Image Handling
+    String? imageUrl = candidate['profile_picture'] ?? profile['profile_photo'] ?? profile['image'];
+    if (imageUrl != null && !imageUrl.startsWith('http')) {
+      imageUrl = "https://www.mindwareinfotech.com$imageUrl";
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
@@ -31,21 +52,21 @@ class CandidateDetailsScreen extends StatelessWidget {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            _buildHeader(),
-            _buildActionButtons(context),
+            _buildHeader(name, jobTitle, status, imageUrl),
+            _buildActionButtons(mobile),
             _buildDetailSection('Basic Info', [
-              _buildInfoRow(LucideIcons.mail, 'Email', candidate['email'] ?? 'Not provided'),
-              _buildInfoRow(LucideIcons.phone, 'Phone', candidate['phone'] ?? 'Not provided'),
-              _buildInfoRow(LucideIcons.mapPin, 'Location', candidate['location'] ?? 'Not specified'),
-              _buildInfoRow(LucideIcons.calendar, 'Applied on', candidate['applied_at'] ?? 'Date unknown'),
+              _buildInfoRow(LucideIcons.mail, 'Email', email),
+              _buildInfoRow(LucideIcons.phone, 'Phone', mobile),
+              _buildInfoRow(LucideIcons.mapPin, 'Location', location),
+              _buildInfoRow(LucideIcons.calendar, 'Applied on', _val(candidate['applied_at'])),
             ]),
             _buildDetailSection('Experience & Education', [
-              _buildInfoRow(LucideIcons.briefcase, 'Total Experience', candidate['experience'] ?? 'Fresher'),
-              _buildInfoRow(LucideIcons.graduationCap, 'Education', candidate['education'] ?? 'Not provided'),
-              _buildInfoRow(LucideIcons.indianRupee, 'Expected Salary', '₹${candidate['expected_salary'] ?? 'Negotiable'}'),
+              _buildInfoRow(LucideIcons.briefcase, 'Total Experience', "$experience Years"),
+              _buildInfoRow(LucideIcons.graduationCap, 'Education', education),
+              _buildInfoRow(LucideIcons.indianRupee, 'Expected Salary', '₹$expectedSalary'),
             ]),
             _buildDetailSection('Skills', [
-              _buildSkillsChips(candidate['skills'] ?? []),
+              _buildSkillsChips(candidate['skills_data'] ?? profile['skills'] ?? []),
             ]),
             if (candidate['resume_url'] != null)
               _buildDetailSection('Resume', [
@@ -59,30 +80,29 @@ class CandidateDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(String name, String jobTitle, String status, String? imageUrl) {
     return Container(
       width: double.infinity,
       color: Colors.white,
       padding: const EdgeInsets.all(24),
       child: Column(
         children: [
-          Hero(
-            tag: 'candidate_${candidate['id']}',
-            child: CircleAvatar(
-              radius: 50,
-              backgroundColor: const Color(0xFFEEF2FF),
-              backgroundImage: candidate['image'] != null ? NetworkImage(candidate['image']) : null,
-              child: candidate['image'] == null ? const Icon(LucideIcons.user, size: 40, color: Color(0xFF6366F1)) : null,
-            ),
+          CircleAvatar(
+            radius: 50,
+            backgroundColor: const Color(0xFFEEF2FF),
+            backgroundImage: imageUrl != null ? NetworkImage(imageUrl) : null,
+            child: imageUrl == null ? Text(name[0].toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF6366F1), fontSize: 32)) : null,
           ),
           const SizedBox(height: 16),
           Text(
-            candidate['name'] ?? 'Unknown Candidate',
+            name,
+            textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF1E293B)),
           ),
           const SizedBox(height: 4),
           Text(
-            candidate['role'] ?? 'Applicant',
+            jobTitle,
+            textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 15, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 12),
@@ -93,7 +113,7 @@ class CandidateDetailsScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              candidate['status']?.toString().toUpperCase() ?? 'NEW',
+              status.toUpperCase(),
               style: const TextStyle(color: Color(0xFF166534), fontSize: 11, fontWeight: FontWeight.w800),
             ),
           ),
@@ -102,7 +122,7 @@ class CandidateDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildActionButtons(BuildContext context) {
+  Widget _buildActionButtons(String? phone) {
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
@@ -110,8 +130,8 @@ class CandidateDetailsScreen extends StatelessWidget {
         children: [
           Expanded(
             child: ElevatedButton.icon(
-              onPressed: () => _launchWhatsApp(candidate['phone']),
-              icon: const Icon(LucideIcons.messageSquare, size: 18),
+              onPressed: () => _launchWhatsApp(phone),
+              icon: const Icon(LucideIcons.phone, size: 18),
               label: const Text('WhatsApp'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF25D366),
@@ -122,25 +142,11 @@ class CandidateDetailsScreen extends StatelessWidget {
               ),
             ),
           ),
-          Expanded(
-            child: ElevatedButton.icon(
-              onPressed: () => _sendSMS(candidate['phone']),
-              icon: const Icon(LucideIcons.mail, size: 18),
-              label: const Text('Message'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFF1F5F9),
-                foregroundColor: const Color(0xFF334155),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                elevation: 0,
-              ),
-            ),
-          ),
           const SizedBox(width: 12),
           Expanded(
             child: ElevatedButton.icon(
-              onPressed: () => _makeCall(candidate['phone']),
-              icon: const Icon(LucideIcons.phone, size: 18),
+              onPressed: () => _makeCall(phone),
+              icon: const Icon(LucideIcons.phoneCall, size: 18),
               label: const Text('Call'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF6366F1),
@@ -211,7 +217,14 @@ class CandidateDetailsScreen extends StatelessWidget {
     if (skills is List) {
       skillList = skills.map((e) => e.toString()).toList();
     } else if (skills is String) {
-      skillList = skills.split(',').map((e) => e.trim()).toList();
+      try {
+        final decoded = jsonDecode(skills);
+        if (decoded is List) {
+           skillList = decoded.map((e) => e['name']?.toString() ?? e.toString()).toList();
+        }
+      } catch (e) {
+        skillList = skills.split(',').map((e) => e.trim()).toList();
+      }
     }
 
     if (skillList.isEmpty) return const Text('No skills listed', style: TextStyle(color: Color(0xFF94A3B8)));
@@ -301,16 +314,8 @@ class CandidateDetailsScreen extends StatelessWidget {
     );
   }
 
-  void _sendSMS(String? phone) async {
-    if (phone == null) return;
-    final Uri url = Uri.parse('sms:$phone');
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url);
-    }
-  }
-
   void _launchWhatsApp(String? phone) async {
-    if (phone == null) return;
+    if (phone == null || phone == 'Not provided') return;
     final Uri url = Uri.parse('whatsapp://send?phone=$phone');
     if (await canLaunchUrl(url)) {
       await launchUrl(url);
@@ -318,7 +323,7 @@ class CandidateDetailsScreen extends StatelessWidget {
   }
 
   void _makeCall(String? phone) async {
-    if (phone == null) return;
+    if (phone == null || phone == 'Not provided') return;
     final Uri url = Uri.parse('tel:$phone');
     if (await canLaunchUrl(url)) {
       await launchUrl(url);
@@ -326,7 +331,11 @@ class CandidateDetailsScreen extends StatelessWidget {
   }
 
   void _launchURL(String urlString) async {
-    final Uri url = Uri.parse(urlString);
+    String finalUrl = urlString;
+    if (!finalUrl.startsWith('http')) {
+      finalUrl = "https://www.mindwareinfotech.com$finalUrl";
+    }
+    final Uri url = Uri.parse(finalUrl);
     if (await canLaunchUrl(url)) {
       await launchUrl(url);
     }

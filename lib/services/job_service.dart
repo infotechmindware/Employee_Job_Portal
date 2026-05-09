@@ -99,35 +99,36 @@ class JobService {
       final url = Uri.parse('$baseUrl/employer/jobs');
       final auth = AuthService();
       final token = await auth.getToken();
-      
+
       final response = await http.post(
         url,
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
           'Authorization': 'Bearer $token',
+          'X-Requested-With': 'XMLHttpRequest',
         },
-        body: json.encode(jobData),
+        body: jsonEncode(jobData),
       ).timeout(const Duration(seconds: 15));
 
       final result = json.decode(response.body);
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return {'success': true, 'message': result['message'] ?? 'Job posted successfully'};
+        return {'success': true, 'data': result['data'] ?? result};
       } else {
-        return {'success': false, 'message': result['message'] ?? 'Failed to post job'};
+        return {'success': false, 'message': result['message'] ?? 'Failed to create job'};
       }
     } catch (e) {
       print('❌ Create Job Error: $e');
-      return {'success': false, 'message': 'Connection error: $e'};
+      return {'success': false, 'message': 'Network error: $e'};
     }
   }
 
-  static Future<Map<String, dynamic>> updateJob(int jobId, Map<String, dynamic> jobData) async {
+  static Future<Map<String, dynamic>> updateJob(dynamic jobId, Map<String, dynamic> jobData) async {
     try {
       final url = Uri.parse('$baseUrl/employer/jobs/$jobId');
       final auth = AuthService();
       final token = await auth.getToken();
-      
+
       final response = await http.put(
         url,
         headers: {
@@ -136,18 +137,18 @@ class JobService {
           'Authorization': 'Bearer $token',
           'X-Requested-With': 'XMLHttpRequest',
         },
-        body: json.encode(jobData),
+        body: jsonEncode(jobData),
       ).timeout(const Duration(seconds: 15));
 
       final result = json.decode(response.body);
-      if (response.statusCode == 200) {
-        return {'success': true, 'message': result['message'] ?? 'Job updated successfully'};
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {'success': true, 'data': result['data'] ?? result};
       } else {
         return {'success': false, 'message': result['message'] ?? 'Failed to update job'};
       }
     } catch (e) {
       print('❌ Update Job Error: $e');
-      return {'success': false, 'message': 'Connection error: $e'};
+      return {'success': false, 'message': 'Network error: $e'};
     }
   }
 
@@ -168,16 +169,15 @@ class JobService {
 
       if (response.statusCode == 200) {
         final result = json.decode(response.body);
-        if (result is List) return result;
-        if (result is Map) {
+        if (result['status'] == true || result['success'] == true) {
           final data = result['data'];
           if (data is Map) {
-            // Check for nested keys like 'jobs' or 'data' again
-            return data['jobs'] ?? data['data'] ?? [];
+            return data['jobs'] ?? [];
+          } else if (data is List) {
+            return data;
           }
-          if (data is List) return data;
-          return result['jobs'] ?? [];
         }
+        return result is List ? result : [];
       }
       return [];
     } catch (e) {
@@ -186,9 +186,13 @@ class JobService {
     }
   }
 
-  static Future<List<dynamic>> getEmployerApplications() async {
+  static Future<List<dynamic>> getEmployerApplications({String? jobId, String? status}) async {
     try {
-      final url = Uri.parse('$baseUrl/employer/applications?per_page=1000');
+      String urlStr = '$baseUrl/employer/applications?per_page=1000&include=candidate,job';
+      if (jobId != null) urlStr += '&job_id=$jobId';
+      if (status != null && status != 'All') urlStr += '&status=${status.toLowerCase()}';
+      
+      final url = Uri.parse(urlStr);
       final auth = AuthService();
       final token = await auth.getToken();
 
@@ -203,20 +207,19 @@ class JobService {
 
       if (response.statusCode == 200) {
         final result = json.decode(response.body);
-        if (result is List) return result;
-        if (result is Map) {
+        if (result['status'] == true || result['success'] == true) {
           final data = result['data'];
           if (data is Map) {
-            // Check for nested keys like 'applications'
-            return data['applications'] ?? data['data'] ?? [];
+            return data['applications'] ?? [];
+          } else if (data is List) {
+            return data;
           }
-          if (data is List) return data;
-          return result['applications'] ?? [];
         }
+        return result is List ? result : [];
       }
       return [];
     } catch (e) {
-      print('❌ Get Applications Error: $e');
+      print('❌ Get Employer Applications Error: $e');
       return [];
     }
   }

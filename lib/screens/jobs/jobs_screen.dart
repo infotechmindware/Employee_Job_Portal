@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../theme/app_colors.dart';
 import '../../providers/navigation_provider.dart';
 import '../../providers/employer_jobs_provider.dart';
+import '../candidates/candidate_applications_screen.dart';
 import '../candidates/candidates_screen.dart';
 import '../candidates/candidate_details_screen.dart';
 import 'post_job/post_job_wizard.dart';
@@ -18,13 +19,11 @@ class JobsScreen extends ConsumerStatefulWidget {
 class _JobsScreenState extends ConsumerState<JobsScreen> {
   int _selectedTab = 0;
   String _selectedStatus = 'All Status';
-  final List<String> _tabs = const ['All jobs', 'Published', 'Drafts', 'Closed'];
+  final List<String> _tabs = const ['All jobs', 'Published'];
   
   final List<String> _statusOptions = const [
     'All Status',
     'Active',
-    'Draft',
-    'Closed',
   ];
 
   final _searchController = TextEditingController();
@@ -99,15 +98,26 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
         if (jobs.isEmpty) return _buildEmptyState();
         
         // Filter jobs based on selected tab and active filters
+        final seenIds = <String>{};
         final filteredJobs = jobs.where((job) {
+          final id = job['id']?.toString();
+          if (id == null || seenIds.contains(id)) return false;
+          
+          final status = job['status']?.toString().toLowerCase() ?? '';
+          final isPublished = job['is_published'] == true || 
+                              job['is_published'] == 1 || 
+                              status == 'published' || 
+                              status == 'active';
+          
           // Tab filtering
-          if (_selectedTab == 1 && job['status'] != 'active') return false;
-          if (_selectedTab == 2 && job['status'] != 'draft') return false;
-          if (_selectedTab == 3 && job['status'] != 'closed') return false;
+          if (_selectedTab == 1 && !isPublished) return false;
+
+          // Tab filtering
+          if (_selectedTab == 1 && !isPublished) return false;
           
           // Active filters (from Apply Filters button)
           if (_activeStatusFilter != 'All Status') {
-            if (job['status']?.toString().toLowerCase() != _activeStatusFilter.toLowerCase()) return false;
+            if (status != 'active' && status != 'published') return false;
           }
           
           if (_activeSearchQuery.isNotEmpty) {
@@ -120,6 +130,7 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
             if (!loc.contains(_activeLocationQuery.toLowerCase())) return false;
           }
           
+          seenIds.add(id);
           return true;
         }).toList();
 
@@ -163,9 +174,8 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
 
   Widget _buildJobCard(Map<String, dynamic> job, List<dynamic> allApplications) {
     final status = job['status']?.toString().toLowerCase() ?? 'active';
-    final isPublished = status == 'active';
+    final isPublished = status == 'active' || status == 'published';
     
-    // Calculate dynamic stats from applications
     final jobId = job['id']?.toString();
     final jobApps = allApplications.where((app) => app['job_id']?.toString() == jobId).toList();
     
@@ -173,193 +183,292 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
     final hotLeadsCount = jobApps.where((app) => app['status']?.toString().toLowerCase() == 'shortlisted').length;
     final newCandidatesCount = jobApps.where((app) => 
       app['status']?.toString().toLowerCase() == 'applied' || 
-      app['status']?.toString().toLowerCase() == 'new' ||
-      app['is_viewed'] == false || app['is_viewed'] == 0
+      app['status']?.toString().toLowerCase() == 'new'
     ).length;
     
     return Container(
-      padding: const EdgeInsets.all(24),
+      margin: const EdgeInsets.only(bottom: 4),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: const Color(0xFFF1F5F9)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: const Color(0xFF0F172A).withOpacity(0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Text(
-                          job['title'] ?? 'Untitled Job',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF1E293B),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  job['title'] ?? 'Untitled Job',
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w900,
+                                    color: Color(0xFF0F172A),
+                                    letterSpacing: -0.5,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              _buildStatusBadge(status, isPublished),
+                            ],
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: isPublished ? const Color(0xFFDCFCE7) : const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(12),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              const Icon(LucideIcons.building2, size: 12, color: Color(0xFF64748B)),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  'Mindware info tech • ${job['location'] ?? 'Location N/A'}',
+                                  style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
                           ),
-                          child: Text(
-                            status.toUpperCase(),
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: isPublished ? const Color(0xFF166534) : const Color(0xFF64748B),
-                            ),
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Mindware info tech • ${job['location'] ?? 'Location not specified'}',
-                      style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                    IconButton(
+                      onPressed: () => _editJob(job),
+                      icon: const Icon(LucideIcons.moreVertical, size: 20, color: Color(0xFF94A3B8)),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
                     ),
                   ],
                 ),
-              ),
-              IconButton(
-                onPressed: () => _editJob(job),
-                icon: const Icon(LucideIcons.edit3, size: 18, color: Color(0xFF6366F1)),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            '${job['experience'] ?? 'Any Exp'} | ${job['education'] ?? 'Graduate'} | ${job['language'] ?? 'English'} | ₹${job['salary_min'] ?? '0'} - ₹${job['salary_max'] ?? '0'} per month | ${job['type'] ?? 'Full time'}',
-            style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
-          ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              _buildJobStat(
-                LucideIcons.messageSquare, 
-                '$responsesCount Responses', 
-                'From Candidates', 
-                const Color(0xFFF0F7FF),
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CandidatesScreen(jobId: jobId, initialTab: 0))),
-              ),
-              const SizedBox(width: 12),
-              _buildJobStat(
-                LucideIcons.zap, 
-                '$hotLeadsCount Hot Leads', 
-                'Shortlisted candidates', 
-                const Color(0xFFFFF7ED),
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CandidatesScreen(jobId: jobId, initialTab: 2))),
-              ),
-              const SizedBox(width: 12),
-              _buildJobStat(
-                LucideIcons.users, 
-                '$newCandidatesCount New Candidates', 
-                'Unviewed applications', 
-                const Color(0xFFF0FDF4),
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CandidatesScreen(jobId: jobId, initialTab: 1))),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => _showApplicationsBottomSheet(job),
-                  icon: const Icon(LucideIcons.users, size: 16),
-                  label: const Text('Applications'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF6366F1),
-                    side: const BorderSide(color: Color(0xFFE2E8F0)),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                const SizedBox(height: 16),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildTag(LucideIcons.briefcase, job['experience'] ?? 'Any Exp'),
+                      _buildTag(LucideIcons.graduationCap, job['education'] ?? 'Any Degree'),
+                      _buildTag(LucideIcons.indianRupee, '₹${job['salary_min'] ?? '0'}-${job['salary_max'] ?? '0'}/mo'),
+                    ],
                   ),
                 ),
+              ],
+            ),
+          ),
+          
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(16),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () => ref.read(employerJobsProvider.notifier).toggleJobStatus(
-                    job['id'],
-                    status == 'active',
-                  ),
-                  icon: Icon(isPublished ? LucideIcons.eyeOff : LucideIcons.eye, size: 16),
-                  label: Text(isPublished ? 'Unpublish' : 'Publish'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isPublished ? const Color(0xFFF1F5F9) : const Color(0xFF4F46E5),
-                    foregroundColor: isPublished ? const Color(0xFF64748B) : Colors.white,
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              child: Row(
+                children: [
+                  _buildStatItem(responsesCount.toString(), 'Responses', const Color(0xFF6366F1)),
+                  _buildStatDivider(),
+                  _buildStatItem(hotLeadsCount.toString(), 'Hot Leads', const Color(0xFFF59E0B)),
+                  _buildStatDivider(),
+                  _buildStatItem(newCandidatesCount.toString(), 'New', const Color(0xFF10B981)),
+                ],
+              ),
+            ),
+          ),
+          
+          const SizedBox(height: 20),
+          
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildSecondaryButton(
+                    'Applications',
+                    LucideIcons.users,
+                    () => Navigator.push(
+                      context, 
+                      MaterialPageRoute(
+                        builder: (_) => CandidateApplicationsScreen(
+                          jobId: jobId,
+                          jobTitle: job['title'],
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          const Divider(color: Color(0xFFF1F5F9)),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Posted on: ${job['created_at_formatted'] ?? 'Just now'}',
-                style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
-              ),
-              const Icon(LucideIcons.moreHorizontal, size: 18, color: Color(0xFF94A3B8)),
-            ],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildPrimaryButton(
+                    isPublished ? 'Unpublish' : 'Publish',
+                    isPublished ? LucideIcons.eyeOff : LucideIcons.eye,
+                    isPublished,
+                    () async {
+                      final wasPublished = status == 'active' || status == 'published';
+                      await ref.read(employerJobsProvider.notifier).toggleJobStatus(job['id'], wasPublished);
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildJobStat(IconData icon, String title, String subtitle, Color color, {VoidCallback? onTap}) {
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            children: [
-              Icon(icon, size: 16, color: const Color(0xFF6366F1).withOpacity(0.7)),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF1E293B))),
-                    Text(subtitle, style: const TextStyle(fontSize: 10, color: Color(0xFF64748B))),
-                  ],
-                ),
-              ),
-            ],
-          ),
+  Widget _buildStatusBadge(String status, bool isPublished) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: isPublished ? const Color(0xFFDCFCE7) : const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        status.toUpperCase(),
+        style: TextStyle(
+          fontSize: 9,
+          fontWeight: FontWeight.w900,
+          color: isPublished ? const Color(0xFF166534) : const Color(0xFF64748B),
+          letterSpacing: 0.5,
         ),
       ),
     );
+  }
+
+  Widget _buildTag(IconData icon, String label) {
+    return Container(
+      margin: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: const Color(0xFF64748B)),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF475569)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatItem(String count, String label, Color color) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(
+            count,
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: color),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF64748B)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatDivider() {
+    return Container(height: 24, width: 1, color: const Color(0xFFE2E8F0));
+  }
+
+  Widget _buildPrimaryButton(String label, IconData icon, bool isPublished, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        height: 48,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: isPublished 
+              ? [const Color(0xFFF1F5F9), const Color(0xFFF1F5F9)]
+              : [const Color(0xFF6366F1), const Color(0xFF4F46E5)],
+          ),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: isPublished ? null : [
+            BoxShadow(
+              color: const Color(0xFF6366F1).withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 16, color: isPublished ? const Color(0xFF64748B) : Colors.white),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: isPublished ? const Color(0xFF64748B) : Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSecondaryButton(String label, IconData icon, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        height: 48,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 16, color: const Color(0xFF6366F1)),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFF6366F1),
+                fontWeight: FontWeight.w800,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildJobStat(IconData icon, String title, String subtitle, Color color, {VoidCallback? onTap}) {
+    return const SizedBox.shrink(); // Not used in new design, integrated into _buildJobCard
   }
 
   Widget _buildHeader(bool isDesktop) {

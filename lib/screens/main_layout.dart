@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/navigation_provider.dart';
 import '../screens/dashboard/dashboard_screen.dart';
-import '../screens/candidates/candidates_screen.dart';
+import '../screens/candidates/candidate_applications_screen.dart';
 import '../screens/jobs/jobs_screen.dart';
 import '../screens/analytics/analytics_screen.dart';
 import '../screens/messaging/messaging_screen.dart';
@@ -34,7 +34,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
   final List<Widget> _screens = [
     const DashboardScreen(),         // 0
     const JobsScreen(),              // 1 (Swapped to match Sidebar index 1)
-    const CandidatesScreen(),        // 2 (Swapped to match Sidebar index 2)
+    const CandidateApplicationsScreen(), // 2 (Swapped to match Sidebar index 2)
     const InterviewsScreen(),        // 3
     const AnalyticsScreen(),         // 4
     const MessagingScreen(),         // 5

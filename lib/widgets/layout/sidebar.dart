@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../providers/navigation_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/dashboard_provider.dart';
 import '../../theme/app_colors.dart';
 
 class Sidebar extends ConsumerStatefulWidget {
@@ -27,7 +28,9 @@ class _SidebarState extends ConsumerState<Sidebar> {
   @override
   Widget build(BuildContext context) {
     final navState = ref.watch(navigationProvider);
+    final dashboardAsync = ref.watch(dashboardDataProvider);
     final activeIndex = navState.activeIndex;
+    final data = dashboardAsync.value;
 
     return Container(
       decoration: const BoxDecoration(
@@ -53,9 +56,9 @@ class _SidebarState extends ConsumerState<Sidebar> {
               physics: const ClampingScrollPhysics(),
               children: [
                 _buildMenuItem(context, ref, 0, 'Dashboard', LucideIcons.home, isActive: activeIndex == 0),
-                _buildMenuItem(context, ref, 1, 'Jobs', LucideIcons.briefcase, isActive: activeIndex == 1),
-                _buildMenuItem(context, ref, 2, 'Candidates', LucideIcons.users, isActive: activeIndex == 2),
-                _buildMenuItem(context, ref, 3, 'Interviews', LucideIcons.calendar, isActive: activeIndex == 3),
+                _buildMenuItem(context, ref, 1, 'Jobs', LucideIcons.briefcase, isActive: activeIndex == 1, count: (data?['active_jobs'] ?? data?['total_jobs'])?.toString()),
+                _buildMenuItem(context, ref, 2, 'Candidates', LucideIcons.users, isActive: activeIndex == 2, count: data?['total_applications']?.toString()),
+                _buildMenuItem(context, ref, 3, 'Interviews', LucideIcons.calendar, isActive: activeIndex == 3, count: (data?['interviews_scheduled'] ?? data?['total_interviews'])?.toString()),
                 _buildMenuItem(context, ref, 5, 'Messages', LucideIcons.messageCircle, isActive: activeIndex == 5),
                 _buildMenuItem(context, ref, 4, 'Analytics', LucideIcons.barChart3, isActive: activeIndex == 4),
                 _buildExpandableMenuItem(
@@ -161,7 +164,7 @@ class _SidebarState extends ConsumerState<Sidebar> {
     );
   }
 
-  Widget _buildMenuItem(BuildContext context, WidgetRef ref, int index, String title, IconData icon, {bool isActive = false}) {
+  Widget _buildMenuItem(BuildContext context, WidgetRef ref, int index, String title, IconData icon, {bool isActive = false, String? count}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: InkWell(
@@ -189,6 +192,18 @@ class _SidebarState extends ConsumerState<Sidebar> {
                     ),
                   ),
                 ),
+                if (count != null && count != '0')
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      count,
+                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800),
+                    ),
+                  ),
               ],
             ],
           ),

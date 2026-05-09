@@ -39,9 +39,22 @@ class EmployerJobsNotifier extends Notifier<AsyncValue<EmployerJobsState>> {
       state = const AsyncValue.loading();
     }
     try {
-      final jobs = await JobService.getEmployerJobs();
+      final allJobs = await JobService.getEmployerJobs();
       final applications = await JobService.getEmployerApplications();
-      state = AsyncValue.data(EmployerJobsState(jobs: jobs, applications: applications));
+      
+      // Filter jobs to remove duplicates and show only real published jobs
+      final seenIds = <String>{};
+      final filteredJobs = allJobs.where((job) {
+        if (job == null) return false;
+        
+        final id = job['id']?.toString();
+        if (id == null || seenIds.contains(id)) return false;
+        
+        seenIds.add(id);
+        return true;
+      }).toList();
+
+      state = AsyncValue.data(EmployerJobsState(jobs: filteredJobs, applications: applications));
     } catch (e, st) {
       if (showLoading) {
         state = AsyncValue.error(e, st);

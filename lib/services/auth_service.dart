@@ -27,12 +27,12 @@ class AuthService {
     );
   }
 
-  Future<Map<String, dynamic>> login(String identifier, String password, {String? emailOtp}) async {
+  Future<Map<String, dynamic>> login(String identifier, String password, {String? emailOtp, String role = 'employer'}) async {
     try {
       final Map<String, dynamic> body = {
         'email': identifier,
         'password': password,
-        'role': 'candidate',
+        'role': role,
       };
       if (emailOtp != null) {
         body['email_otp'] = emailOtp;
@@ -126,7 +126,7 @@ class AuthService {
         body: jsonEncode({
           'email': email,
           'purpose': 'auth',
-          'role': 'candidate',
+          'role': 'employer',
         }),
       );
 
@@ -150,7 +150,7 @@ class AuthService {
           body: jsonEncode({
             'email': email,
             'purpose': 'auth',
-            'role': 'candidate',
+            'role': 'employer',
           }),
         );
         
