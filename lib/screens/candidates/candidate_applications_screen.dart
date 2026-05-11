@@ -8,6 +8,7 @@ import '../subscription/subscription_plans_screen.dart';
 import '../../services/job_service.dart';
 import '../../theme/app_colors.dart';
 import '../../providers/employer_jobs_provider.dart';
+import '../../providers/navigation_provider.dart';
 
 class CandidateApplicationsScreen extends ConsumerStatefulWidget {
   final String? jobId;
@@ -93,6 +94,17 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
   @override
   Widget build(BuildContext context) {
     final bool isJobSelected = _selectedJob != null;
+    
+    // Sync tab with navigation provider if needed
+    final navState = ref.watch(navigationProvider);
+    if (navState.activeIndex == 2 && _selectedTab != navState.applicationsTabIndex) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() => _selectedTab = navState.applicationsTabIndex);
+          _fetchApplications();
+        }
+      });
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -801,14 +813,31 @@ class _CandidateCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final candidate = app['candidate'] ?? app;
-    final name = app['full_name'] ?? candidate['name'] ?? app['candidate_name'] ?? "Candidate #${app['candidate_user_id']}";
-    final match = app['score']?.toString() ?? "0";
-    final location = app['location_display'] ?? "Location N/A";
-    final experience = "${app['experience_years'] ?? '0'} Yrs";
+    final candidate = app['candidate'] ?? {};
+    final job = app['job'] ?? {};
     
-    String? imageUrl = app['profile_picture'] ?? candidate['profile_photo'];
-    if (imageUrl != null && !imageUrl.startsWith('http')) imageUrl = "https://www.mindwareinfotech.com$imageUrl";
+    final name = candidate['full_name'] ?? app['full_name'] ?? "Candidate";
+    final match = app['score']?.toString() ?? "0";
+    
+    // Build location dynamically: city + state + country
+    final city = candidate['city']?.toString() ?? '';
+    final state = candidate['state']?.toString() ?? '';
+    final country = candidate['country']?.toString() ?? '';
+    
+    String location = "Not provided";
+    List<String> locParts = [];
+    if (city.isNotEmpty) locParts.add(city);
+    if (state.isNotEmpty) locParts.add(state);
+    if (country.isNotEmpty) locParts.add(country);
+    if (locParts.isNotEmpty) location = locParts.join(', ');
+
+    final experience = "${candidate['experience'] ?? '0'} Yrs";
+    final jobTitle = job['title'] ?? app['job_title'] ?? 'Job';
+    
+    String? imageUrl = candidate['profile_image'] ?? app['profile_picture'];
+    if (imageUrl != null && !imageUrl.startsWith('http')) {
+      imageUrl = "https://www.mindwareinfotech.com$imageUrl";
+    }
 
     return InkWell(
       onTap: onTap,
@@ -846,6 +875,8 @@ class _CandidateCard extends StatelessWidget {
                           ),
                         ],
                       ),
+                      Text(jobTitle, style: const TextStyle(fontSize: 13, color: Color(0xFF6366F1), fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 2),
                       Text("$experience Experience • $location", style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
                     ],
                   ),
@@ -894,8 +925,20 @@ class _CandidatePreviewModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final candidate = app['candidate'] ?? app;
-    final name = app['full_name'] ?? candidate['name'] ?? "Candidate";
+    final candidate = app['candidate'] ?? {};
+    final name = candidate['full_name'] ?? app['full_name'] ?? "Candidate";
+    
+    // Build location dynamically: city + state + country
+    final city = candidate['city']?.toString() ?? '';
+    final state = candidate['state']?.toString() ?? '';
+    final country = candidate['country']?.toString() ?? '';
+    
+    String location = "Not provided";
+    List<String> locParts = [];
+    if (city.isNotEmpty) locParts.add(city);
+    if (state.isNotEmpty) locParts.add(state);
+    if (country.isNotEmpty) locParts.add(country);
+    if (locParts.isNotEmpty) location = locParts.join(', ');
     
     return DraggableScrollableSheet(
       initialChildSize: 0.7,
@@ -910,10 +953,10 @@ class _CandidatePreviewModal extends StatelessWidget {
           const SizedBox(height: 24),
           Text(name, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
           const SizedBox(height: 32),
-          _buildDetailRow(LucideIcons.mail, 'Email', app['candidate_email'] ?? 'Not provided'),
-          _buildDetailRow(LucideIcons.phone, 'Phone', app['candidate_mobile'] ?? 'Not provided'),
-          _buildDetailRow(LucideIcons.mapPin, 'Location', app['location_display'] ?? 'Not provided'),
-          _buildDetailRow(LucideIcons.briefcase, 'Experience', "${app['experience_years'] ?? '0'} Years"),
+          _buildDetailRow(LucideIcons.mail, 'Email', candidate['email'] ?? 'Not provided'),
+          _buildDetailRow(LucideIcons.phone, 'Phone', candidate['phone'] ?? 'Not provided'),
+          _buildDetailRow(LucideIcons.mapPin, 'Location', location),
+          _buildDetailRow(LucideIcons.briefcase, 'Experience', "${candidate['experience'] ?? '0'} Years"),
           const SizedBox(height: 32),
           SizedBox(
             width: double.infinity,

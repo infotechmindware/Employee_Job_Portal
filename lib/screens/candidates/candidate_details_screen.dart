@@ -16,20 +16,34 @@ class CandidateDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Standardize mapping based on web dashboard
-    final profile = candidate['candidate'] ?? candidate;
-    final name = candidate['full_name'] ?? profile['name'] ?? candidate['candidate_name'] ?? candidate['fullname'] ?? "Candidate #${candidate['candidate_user_id'] ?? candidate['id']}";
-    final jobTitle = _val(candidate['job_title'] ?? candidate['job']?['title']);
-    final email = _val(candidate['candidate_email'] ?? profile['email']);
-    final mobile = _val(candidate['candidate_mobile'] ?? profile['mobile'] ?? profile['phone']);
-    final location = _val(candidate['location_display'] ?? profile['location']);
-    final experience = _val(candidate['experience_years'] ?? profile['experience']);
-    final education = _val(candidate['education'] ?? profile['education']);
-    final expectedSalary = _val(candidate['expected_salary'] ?? profile['expected_salary']);
+    // Standardize mapping based on API response structure
+    final profile = candidate['candidate'] ?? {};
+    final job = candidate['job'] ?? {};
+    
+    final name = profile['full_name'] ?? candidate['full_name'] ?? "Candidate";
+    final jobTitle = job['title'] ?? candidate['job_title'] ?? 'Job Title';
+    final email = _val(profile['email'] ?? candidate['candidate_email']);
+    final mobile = _val(profile['phone'] ?? profile['mobile'] ?? candidate['candidate_mobile']);
+    
+    // Build location dynamically: city + state + country
+    final city = profile['city']?.toString() ?? '';
+    final state = profile['state']?.toString() ?? '';
+    final country = profile['country']?.toString() ?? '';
+    
+    String location = "Not provided";
+    List<String> locParts = [];
+    if (city.isNotEmpty) locParts.add(city);
+    if (state.isNotEmpty) locParts.add(state);
+    if (country.isNotEmpty) locParts.add(country);
+    if (locParts.isNotEmpty) location = locParts.join(', ');
+
+    final experience = _val(profile['experience'] ?? candidate['experience_years']);
+    final education = _val(profile['education']);
+    final expectedSalary = _val(profile['expected_salary']);
     final status = candidate['status']?.toString().toLowerCase() ?? 'applied';
     
     // Image Handling
-    String? imageUrl = candidate['profile_picture'] ?? profile['profile_photo'] ?? profile['image'];
+    String? imageUrl = profile['profile_image'] ?? candidate['profile_picture'];
     if (imageUrl != null && !imageUrl.startsWith('http')) {
       imageUrl = "https://www.mindwareinfotech.com$imageUrl";
     }
@@ -61,7 +75,7 @@ class CandidateDetailsScreen extends StatelessWidget {
               _buildInfoRow(LucideIcons.calendar, 'Applied on', _val(candidate['applied_at'])),
             ]),
             _buildDetailSection('Experience & Education', [
-              _buildInfoRow(LucideIcons.briefcase, 'Total Experience', "$experience Years"),
+              _buildInfoRow(LucideIcons.briefcase, 'Total Experience', experience.toLowerCase().contains('year') || experience.toLowerCase().contains('month') ? experience : "$experience Years"),
               _buildInfoRow(LucideIcons.graduationCap, 'Education', education),
               _buildInfoRow(LucideIcons.indianRupee, 'Expected Salary', '₹$expectedSalary'),
             ]),
@@ -215,7 +229,10 @@ class CandidateDetailsScreen extends StatelessWidget {
   Widget _buildSkillsChips(dynamic skills) {
     List<String> skillList = [];
     if (skills is List) {
-      skillList = skills.map((e) => e.toString()).toList();
+      skillList = skills.map((e) {
+        if (e is Map) return e['name']?.toString() ?? e.toString();
+        return e.toString();
+      }).toList();
     } else if (skills is String) {
       try {
         final decoded = jsonDecode(skills);

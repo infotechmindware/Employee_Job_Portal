@@ -121,45 +121,43 @@ class DashboardService {
       a['status']?.toString().toLowerCase() == 'shortlisted'
     ).length;
 
-    // Build Recent Activities
+    // Build Recent Activities from Applications (Sorted by Date)
+    final List<dynamic> sortedApps = List.from(applications);
+    sortedApps.sort((a, b) {
+      final dateA = DateTime.tryParse(a['applied_at']?.toString() ?? '') ?? DateTime(2000);
+      final dateB = DateTime.tryParse(b['applied_at']?.toString() ?? '') ?? DateTime(2000);
+      return dateB.compareTo(dateA);
+    });
+
     final List<Map<String, dynamic>> activities = [];
-    
-    for (var job in jobs.take(2)) {
-      activities.add({
-        'type': 'job_post',
-        'title': 'System',
-        'subtitle': 'Job post "${job['title']}" is now live',
-        'time': 'Active',
-      });
-    }
-    
-    for (var app in applications.take(8)) {
+    for (var app in sortedApps.take(10)) {
+      final candidate = app['candidate'] ?? {};
+      final job = app['job'] ?? {};
       activities.add({
         'type': 'application',
-        'title': app['full_name'] ?? 'A candidate',
-        'subtitle': 'applied for ${app['job_title'] ?? 'your job'}',
-        'time': app['created_at_human'] ?? 'Just now',
+        'title': candidate['full_name'] ?? app['candidate_name'] ?? 'A candidate',
+        'subtitle': 'applied for ${job['title'] ?? app['job_title'] ?? 'your job'}',
+        'time': app['applied_at'] ?? app['created_at'] ?? 'Just now',
+        'created_at': app['applied_at'] ?? app['created_at'],
       });
     }
 
-    // Build Analytics Data (Simulated 30 day trend if no API)
+    // Build Analytics Data (Real 30 day trend from applications)
     final List<Map<String, dynamic>> analytics = [];
     final now = DateTime.now();
     for (int i = 29; i >= 0; i--) {
       final date = now.subtract(Duration(days: i));
       final dateStr = DateFormat('yyyy-MM-dd').format(date);
       final count = applications.where((a) {
-        final createdAt = a['created_at'];
-        if (createdAt == null) return false;
-        final createdAtStr = createdAt.toString();
+        final appliedAt = a['applied_at'] ?? a['created_at'];
+        if (appliedAt == null) return false;
+        final appliedAtStr = appliedAt.toString();
         
-        // Try parsing to DateTime for precise matching
         try {
-          final appDate = DateTime.parse(createdAtStr);
+          final appDate = DateTime.parse(appliedAtStr);
           return appDate.year == date.year && appDate.month == date.month && appDate.day == date.day;
         } catch (_) {
-          // Fallback to string comparison if parsing fails
-          return createdAtStr.startsWith(dateStr);
+          return appliedAtStr.startsWith(dateStr);
         }
       }).length;
       analytics.add({'date': dateStr, 'count': count, 'value': count.toDouble()});

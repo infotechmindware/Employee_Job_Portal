@@ -75,7 +75,8 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
           // Filter by Search
           if (_searchQuery.isNotEmpty) {
             apps = apps.where((a) {
-              final name = a['candidate_name']?.toString().toLowerCase() ?? '';
+              final profile = a['candidate'] ?? {};
+              final name = (profile['full_name'] ?? a['candidate_name'] ?? '').toString().toLowerCase();
               return name.contains(_searchQuery.toLowerCase());
             }).toList();
           }
@@ -268,7 +269,12 @@ class _CandidateCard extends StatelessWidget {
                   child: CircleAvatar(
                     radius: 24,
                     backgroundColor: const Color(0xFFEEF2FF),
-                    child: const Icon(LucideIcons.user, size: 24, color: Color(0xFF6366F1)),
+                    backgroundImage: app['candidate']?['profile_image'] != null 
+                      ? NetworkImage("https://www.mindwareinfotech.com${app['candidate']['profile_image']}") 
+                      : null,
+                    child: app['candidate']?['profile_image'] == null 
+                      ? Text((app['candidate']?['full_name'] ?? 'C')[0].toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF6366F1))) 
+                      : null,
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -277,12 +283,24 @@ class _CandidateCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        app['candidate_name'] ?? 'Unknown',
+                        app['candidate']?['full_name'] ?? app['candidate_name'] ?? 'Unknown',
                         style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Color(0xFF1E293B)),
                       ),
                       Text(
-                        app['location'] ?? 'Location not specified',
+                        [
+                          app['candidate']?['city'],
+                          app['candidate']?['state'],
+                          app['candidate']?['country']
+                        ].where((e) => e != null && e.toString().isNotEmpty).join(', ').isEmpty 
+                          ? 'Location not specified' 
+                          : [
+                              app['candidate']?['city'],
+                              app['candidate']?['state'],
+                              app['candidate']?['country']
+                            ].where((e) => e != null && e.toString().isNotEmpty).join(', '),
                         style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),

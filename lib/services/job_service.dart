@@ -210,6 +210,10 @@ class JobService {
         if (result['status'] == true || result['success'] == true) {
           final data = result['data'];
           if (data is Map) {
+            // Handle both result['data']['applications'] and result['data']['data']['applications']
+            if (data['data'] != null && data['data'] is Map && data['data']['applications'] != null) {
+              return data['data']['applications'];
+            }
             return data['applications'] ?? [];
           } else if (data is List) {
             return data;

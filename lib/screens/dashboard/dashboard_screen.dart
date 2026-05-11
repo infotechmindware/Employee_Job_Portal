@@ -165,10 +165,34 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   List<Map<String, dynamic>> _parseStats(Map<String, dynamic> data) {
     return [
-      {'title': 'Active Jobs', 'value': (data['active_jobs'] ?? '0').toString(), 'icon': LucideIcons.briefcase, 'color': const Color(0xFF3B82F6)},
-      {'title': 'Total Applications', 'value': (data['total_applications'] ?? '0').toString(), 'icon': LucideIcons.fileText, 'color': const Color(0xFF6366F1)},
-      {'title': 'New Applications', 'value': (data['new_applications'] ?? '0').toString(), 'icon': LucideIcons.userPlus, 'color': const Color(0xFF8B5CF6)},
-      {'title': 'Interviews Scheduled', 'value': (data['interviews_scheduled'] ?? '0').toString(), 'icon': LucideIcons.calendar, 'color': const Color(0xFF10B981)},
+      {
+        'title': 'Active Jobs', 
+        'value': (data['active_jobs'] ?? '0').toString(), 
+        'icon': LucideIcons.briefcase, 
+        'color': const Color(0xFF3B82F6),
+        'onTap': () => ref.read(navigationProvider.notifier).setIndex(1),
+      },
+      {
+        'title': 'Total Applications', 
+        'value': (data['total_applications'] ?? '0').toString(), 
+        'icon': LucideIcons.fileText, 
+        'color': const Color(0xFF6366F1),
+        'onTap': () => ref.read(navigationProvider.notifier).setIndex(2, appTabIndex: 0),
+      },
+      {
+        'title': 'New Applications', 
+        'value': (data['new_applications'] ?? '0').toString(), 
+        'icon': LucideIcons.userPlus, 
+        'color': const Color(0xFF8B5CF6),
+        'onTap': () => ref.read(navigationProvider.notifier).setIndex(2, appTabIndex: 1),
+      },
+      {
+        'title': 'Interviews Scheduled', 
+        'value': (data['interviews_scheduled'] ?? '0').toString(), 
+        'icon': LucideIcons.calendar, 
+        'color': const Color(0xFF10B981),
+        'onTap': () => ref.read(navigationProvider.notifier).setIndex(3),
+      },
     ];
   }
 
@@ -204,7 +228,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         return _StatCard(
           stat: stats[index],
           isActive: _activeStatIndex == index,
-          onTap: () => setState(() => _activeStatIndex = _activeStatIndex == index ? null : index),
+          onTap: stats[index]['onTap'],
         );
       },
     );
@@ -291,6 +315,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         ],
                       ),
                       style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w500),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -552,23 +578,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   String _formatTimestamp(dynamic timestamp) {
-    if (timestamp == null) return 'Just now';
+    if (timestamp == null || timestamp.toString().isEmpty) return 'Just now';
     try {
       DateTime dt;
       if (timestamp is String) {
-        dt = DateTime.parse(timestamp);
+        dt = DateTime.tryParse(timestamp) ?? DateTime.now();
+      } else if (timestamp is DateTime) {
+        dt = timestamp;
       } else {
         return timestamp.toString();
       }
       
-      final now = DateTime.now();
-      final diff = now.difference(dt);
-      
-      if (diff.inMinutes < 1) return 'Just now';
-      if (diff.inMinutes < 60) return '${diff.inMinutes} mins ago';
-      if (diff.inHours < 24) return '${diff.inHours} hours ago';
-      if (diff.inDays == 1) return 'Yesterday';
-      return DateFormat('MMM dd, hh:mm a').format(dt);
+      // Use web dashboard format: May 10, 14:34
+      return DateFormat('MMM dd, HH:mm').format(dt);
     } catch (_) {
       return timestamp.toString();
     }
@@ -614,38 +636,41 @@ class _StatCardState extends State<_StatCard> {
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          transform: Matrix4.identity()..scale(showHighlight ? 1.02 : 1.0),
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: showHighlight ? color.withOpacity(0.4) : Colors.white, width: 2),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
-          ),
-          child: Stack(
-            children: [
-              Positioned(
-                right: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-                  child: Icon(widget.stat['icon'] as IconData, size: 22, color: color),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        transform: Matrix4.identity()..scale(showHighlight ? 1.02 : 1.0),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: showHighlight ? color.withOpacity(0.4) : Colors.white, width: 2),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
+        ),
+        child: InkWell(
+          onTap: widget.onTap,
+          borderRadius: BorderRadius.circular(24),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Stack(
+              children: [
+                Positioned(
+                  right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                    child: Icon(widget.stat['icon'] as IconData, size: 22, color: color),
+                  ),
                 ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(widget.stat['value'] as String, style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1.5, color: Color(0xFF0F172A))),
-                  const SizedBox(height: 6),
-                  Text(widget.stat['title'] as String, style: const TextStyle(fontSize: 13, color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
-                ],
-              ),
-            ],
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(widget.stat['value'] as String, style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1.5, color: Color(0xFF0F172A))),
+                    const SizedBox(height: 6),
+                    Text(widget.stat['title'] as String, style: const TextStyle(fontSize: 13, color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
