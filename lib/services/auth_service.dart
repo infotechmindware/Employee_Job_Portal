@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
-  static const String baseUrl = 'https://www.mindwareinfotech.com/api/v1';
+  static const String baseUrl = 'https://mindwareinfotech.com/api/v1';
 
   // Temporary flag to bypass auth during development
   static const bool skipAuth = false; // Disabled bypass to allow real token testing
@@ -17,6 +17,7 @@ class AuthService {
     Map<String, String> headers = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest',
       if (requireAuth && token != null) 'Authorization': 'Bearer $token',
     };
 
@@ -39,7 +40,7 @@ class AuthService {
       }
       
       final response = await http.post(
-        Uri.parse('https://www.mindwareinfotech.com/api/v1/login'),
+        Uri.parse('https://mindwareinfotech.com/api/v1/login'),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -112,21 +113,24 @@ class AuthService {
     }
   }
 
-  Future<Map<String, dynamic>> sendEmailOtp(String email) async {
+  Future<Map<String, dynamic>> sendEmailOtp(String email, {String purpose = 'auth', String role = 'employer'}) async {
+    final Map<String, String> commonHeaders = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest',
+      'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G973F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.106 Mobile Safari/537.36',
+      'Origin': 'https://mindwareinfotech.com',
+      'Referer': 'https://mindwareinfotech.com/',
+    };
+
     try {
-      // Trying the API-specific endpoint first to avoid CSRF/Session issues found on web routes
-      // Pattern matched with /api/v1/send-phone-otp seen in Swagger
       final response = await http.post(
-        Uri.parse('https://www.mindwareinfotech.com/api/v1/send-email-otp'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
+        Uri.parse('https://mindwareinfotech.com/api/v1/send-email-otp'),
+        headers: commonHeaders,
         body: jsonEncode({
           'email': email,
-          'purpose': 'auth',
-          'role': 'employer',
+          'purpose': purpose,
+          'role': role,
         }),
       );
 
@@ -138,19 +142,14 @@ class AuthService {
         return {'success': true, 'message': data['message'] ?? 'OTP sent successfully'};
       } 
       
-      // If 404, fallback to the web route but with extra headers to handle CSRF-like environments
       if (response.statusCode == 404 || response.statusCode == 403) {
         final fallbackResponse = await http.post(
-          Uri.parse('https://www.mindwareinfotech.com/auth/email/send-otp'),
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest', // Tells Laravel it's an AJAX request
-          },
+          Uri.parse('https://mindwareinfotech.com/auth/email/send-otp'),
+          headers: commonHeaders,
           body: jsonEncode({
             'email': email,
-            'purpose': 'auth',
-            'role': 'employer',
+            'purpose': purpose,
+            'role': role,
           }),
         );
         
@@ -182,6 +181,7 @@ class AuthService {
     required String mobile,
     required String email,
     required String password,
+    required String emailOtp,
   }) async {
     try {
       final response = await _post('/register-employer', {
@@ -189,6 +189,7 @@ class AuthService {
         'phone': mobile,
         'email': email,
         'password': password,
+        'email_otp': emailOtp,
       });
 
       print('Register Response: ${response.body}');
@@ -267,7 +268,7 @@ class AuthService {
       final token = await getToken();
       
       final getResponse = await http.get(
-        Uri.parse('https://www.mindwareinfotech.com/api/v1/employer/profile'),
+        Uri.parse('https://mindwareinfotech.com/api/v1/employer/profile'),
         headers: {
           'Accept': 'application/json',
           'Authorization': 'Bearer $token',
@@ -293,7 +294,7 @@ class AuthService {
     try {
       final token = await getToken();
 
-      var request = http.MultipartRequest('POST', Uri.parse('https://www.mindwareinfotech.com/api/v1/employer/profile'));
+      var request = http.MultipartRequest('POST', Uri.parse('https://mindwareinfotech.com/api/v1/employer/profile'));
       request.headers.addAll({
         'Accept': 'application/json',
         'Authorization': 'Bearer $token',
@@ -329,7 +330,7 @@ class AuthService {
   Future<Map<String, dynamic>> reverseGeocode(double lat, double lng) async {
     try {
       final response = await http.get(
-        Uri.parse('https://www.mindwareinfotech.com/api/geo/reverse?lat=$lat&lon=$lng'),
+        Uri.parse('https://mindwareinfotech.com/api/geo/reverse?lat=$lat&lon=$lng'),
         headers: {'Accept': 'application/json'},
       );
 
@@ -346,7 +347,7 @@ class AuthService {
   Future<Map<String, dynamic>> searchLocation(String query) async {
     try {
       final response = await http.get(
-        Uri.parse('https://www.mindwareinfotech.com/api/geo/search?q=${Uri.encodeComponent(query)}&limit=1'),
+        Uri.parse('https://mindwareinfotech.com/api/geo/search?q=${Uri.encodeComponent(query)}&limit=1'),
         headers: {'Accept': 'application/json'},
       );
 

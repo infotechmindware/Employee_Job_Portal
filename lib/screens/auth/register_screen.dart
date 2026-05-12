@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -16,6 +17,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _nameController = TextEditingController();
   final _mobileController = TextEditingController();
   final _emailController = TextEditingController();
+  final _otpController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   
@@ -23,6 +25,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _agreeToTerms = false;
+  
+  // OTP related state
+  bool _isOtpSent = false;
+  bool _isSendingOtp = false;
+  int _timerSeconds = 60;
+  bool _canResendOtp = true;
+  Timer? _timer;
 
   // Real-time validation state — green only after valid input
   bool _emailValid = false;
@@ -113,9 +122,67 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _nameController.dispose();
     _mobileController.dispose();
     _emailController.dispose();
+    _otpController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _timer?.cancel();
     super.dispose();
+  }
+
+  void _startTimer() {
+    setState(() {
+      _timerSeconds = 60;
+      _canResendOtp = false;
+    });
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_timerSeconds == 0) {
+        setState(() {
+          _canResendOtp = true;
+          timer.cancel();
+        });
+      } else {
+        setState(() {
+          _timerSeconds--;
+        });
+      }
+    });
+  }
+
+  Future<void> _sendOtp() async {
+    if (!_isValidEmail(_emailController.text)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid email address')),
+      );
+      return;
+    }
+
+    setState(() => _isSendingOtp = true);
+    
+    final success = await ref.read(authProvider.notifier).sendEmailOtp(
+      _emailController.text,
+      role: 'employer',
+      purpose: 'auth',
+    );
+    
+    setState(() => _isSendingOtp = false);
+
+    if (success) {
+      setState(() => _isOtpSent = true);
+      _startTimer();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('OTP sent successfully!')),
+        );
+      }
+    } else {
+      if (mounted) {
+        final error = ref.read(authProvider).error;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error ?? 'Failed to send OTP')),
+        );
+      }
+    }
   }
 
   void _handleRegister() async {
@@ -133,9 +200,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       return;
     }
 
-    if (_nameController.text.isEmpty || _mobileController.text.isEmpty || _emailController.text.isEmpty || _passwordController.text.isEmpty) {
+    if (_nameController.text.isEmpty || _mobileController.text.isEmpty || _emailController.text.isEmpty || _otpController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all required fields')),
+        const SnackBar(content: Text('Please fill in all required fields including OTP')),
       );
       return;
     }
@@ -145,6 +212,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       mobile: _mobileController.text,
       email: _emailController.text,
       password: _passwordController.text,
+      emailOtp: _otpController.text,
     );
 
     if (success) {
@@ -425,9 +493,46 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           
           _buildLabel('Email Address'),
           const SizedBox(height: 8),
-          _buildTextField('Enter your email address', isSuccess: _emailTouched && _emailValid, controller: _emailController),
+          _buildTextField('Enter your email address', 
+            isSuccess: _emailTouched && _emailValid, 
+            controller: _emailController,
+            readOnly: _isOtpSent,
+          ),
           const SizedBox(height: 4),
           Text("We'll use this to create your account. You can add more details after registration.", style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+          const SizedBox(height: 16),
+          
+          _buildLabel('Email OTP'),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _buildTextField('6-digit OTP', controller: _otpController),
+              ),
+              const SizedBox(width: 12),
+              SizedBox(
+                height: 54,
+                child: ElevatedButton(
+                  onPressed: (_isSendingOtp || !_canResendOtp) ? null : _sendOtp,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFE0E7FF),
+                    foregroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    elevation: 0,
+                  ),
+                  child: _isSendingOtp 
+                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                    : Text(
+                        _isOtpSent 
+                          ? (_canResendOtp ? 'Resend OTP' : 'Resend in ${_timerSeconds}s') 
+                          : 'Send OTP',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 16),
           
           _buildLabel('Password'),
@@ -680,14 +785,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     );
   }
 
-  Widget _buildTextField(String hint, {bool isSuccess = false, TextEditingController? controller}) {
+  Widget _buildTextField(String hint, {bool isSuccess = false, TextEditingController? controller, bool readOnly = false}) {
     return TextFormField(
       controller: controller,
+      readOnly: readOnly,
+      keyboardType: hint.contains('OTP') || hint.contains('mobile') ? TextInputType.number : TextInputType.text,
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
         filled: true,
-        fillColor: isSuccess ? const Color(0xFFF0FDF4) : AppColors.background,
+        fillColor: readOnly ? Colors.grey[100] : (isSuccess ? const Color(0xFFF0FDF4) : AppColors.background),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),

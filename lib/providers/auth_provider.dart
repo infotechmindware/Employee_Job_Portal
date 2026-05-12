@@ -51,9 +51,9 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
-  Future<bool> sendEmailOtp(String email) async {
+  Future<bool> sendEmailOtp(String email, {String purpose = 'auth', String role = 'candidate'}) async {
     state = state.copyWith(isLoading: true, error: null);
-    final result = await _authService.sendEmailOtp(email);
+    final result = await _authService.sendEmailOtp(email, purpose: purpose, role: role);
     
     if (result['success']) {
       state = state.copyWith(isLoading: false);
@@ -69,6 +69,7 @@ class AuthNotifier extends Notifier<AuthState> {
     required String mobile,
     required String email,
     required String password,
+    required String emailOtp,
   }) async {
     state = state.copyWith(isLoading: true, error: null);
     final result = await _authService.registerEmployer(
@@ -76,6 +77,7 @@ class AuthNotifier extends Notifier<AuthState> {
       mobile: mobile,
       email: email,
       password: password,
+      emailOtp: emailOtp,
     );
     
     if (result['success']) {

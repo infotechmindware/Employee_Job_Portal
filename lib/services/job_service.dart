@@ -3,8 +3,8 @@ import 'package:http/http.dart' as http;
 import 'auth_service.dart';
 
 class JobService {
-  static const String baseUrl = 'https://www.mindwareinfotech.com/api/v1';
-  static const String searchBaseUrl = 'https://www.mindwareinfotech.com/api';
+  static const String baseUrl = 'https://mindwareinfotech.com/api/v1';
+  static const String searchBaseUrl = 'https://mindwareinfotech.com/api';
 
   /// Search job titles exactly like web version
   static Future<List<String>> getJobTitleSuggestions(String query) async {
