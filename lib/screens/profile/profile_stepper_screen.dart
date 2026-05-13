@@ -4,7 +4,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart' as ll;
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import '../../widgets/common/image_upload_card.dart';
@@ -34,7 +35,8 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
     _addressController = TextEditingController();
     
     // Default to Pankaj Plaza, Dwarka coordinates for preview
-    _currentLatLng = const LatLng(28.5908, 77.0433);
+    // Default to Pankaj Plaza, Dwarka coordinates for preview
+    _currentLatLng = const ll.LatLng(28.5908, 77.0433);
 
     // Load existing profile data
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadProfile());
@@ -54,8 +56,8 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
   }
 
   // Location & Map states
-  LatLng? _currentLatLng;
-  GoogleMapController? _mapController;
+  ll.LatLng? _currentLatLng;
+  final MapController _mapController = MapController();
   bool _isLocating = false;
   bool _isSearching = false;
   bool _isLoading = false;
@@ -514,7 +516,7 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
         ),
         const SizedBox(height: 24),
         Container(
-          height: 220,
+          height: 250,
           width: double.infinity,
           decoration: BoxDecoration(
             color: const Color(0xFFF1F5F9),
@@ -522,46 +524,54 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
             border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
           clipBehavior: Clip.antiAlias,
-          child: GoogleMap(
-                  initialCameraPosition: CameraPosition(
-                    target: _currentLatLng ?? const LatLng(20.5937, 78.9629), // Default to India center
-                    zoom: _currentLatLng == null ? 5 : 16,
-                  ),
-                  onMapCreated: (controller) {
-                    _mapController = controller;
-                    if (_currentLatLng != null) {
-                      _mapController?.animateCamera(CameraUpdate.newLatLngZoom(_currentLatLng!, 16));
+          child: Stack(
+            children: [
+              FlutterMap(
+                mapController: _mapController,
+                options: MapOptions(
+                  initialCenter: _currentLatLng ?? const ll.LatLng(20.5937, 78.9629),
+                  initialZoom: _currentLatLng == null ? 5 : 15,
+                  onPositionChanged: (position, hasGesture) {
+                    if (hasGesture && position.center != null) {
+                      setState(() {
+                        _currentLatLng = position.center;
+                      });
                     }
                   },
-                  onCameraMove: (position) {
-                    setState(() {
-                      _currentLatLng = position.target;
-                    });
-                  },
-                  onCameraIdle: () {
-                    if (_currentLatLng != null && !_isLocating && !_isSearching) {
-                      _reverseGeocode(_currentLatLng!.latitude, _currentLatLng!.longitude);
+                  onMapEvent: (event) {
+                    if (event is MapEventMoveEnd) {
+                      if (_currentLatLng != null && !_isLocating && !_isSearching) {
+                        _reverseGeocode(_currentLatLng!.latitude, _currentLatLng!.longitude);
+                      }
+                      _isSearching = false;
                     }
-                    _isSearching = false; // Reset search flag
                   },
-                  markers: {
-                    Marker(
-                      markerId: const MarkerId('location'),
-                      position: _currentLatLng ?? const LatLng(20.5937, 78.9629),
-                      draggable: true,
-                      onDragEnd: (newPosition) {
-                        setState(() {
-                          _currentLatLng = newPosition;
-                        });
-                        _reverseGeocode(newPosition.latitude, newPosition.longitude);
-                      },
-                    ),
-                  },
-                  myLocationEnabled: true,
-                  myLocationButtonEnabled: true,
-                  zoomControlsEnabled: true,
-                  mapType: MapType.normal,
                 ),
+                children: [
+                  TileLayer(
+                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.mindware.admin.admin_app',
+                  ),
+                  if (_currentLatLng != null)
+                    MarkerLayer(
+                      markers: [
+                        Marker(
+                          point: _currentLatLng!,
+                          width: 80,
+                          height: 80,
+                          child: const Icon(LucideIcons.mapPin, color: Color(0xFFEF4444), size: 40),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+              if (_isSearching || _isLocating)
+                Container(
+                  color: Colors.white.withOpacity(0.3),
+                  child: const Center(child: CircularProgressIndicator(strokeWidth: 3)),
+                ),
+            ],
+          ),
         ),
       ],
     );
@@ -576,9 +586,9 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
         List<Location> locations = await locationFromAddress(address);
         if (locations.isNotEmpty) {
           final loc = locations.first;
-          final latLng = LatLng(loc.latitude, loc.longitude);
+          final latLng = ll.LatLng(loc.latitude, loc.longitude);
           setState(() => _currentLatLng = latLng);
-          _mapController?.animateCamera(CameraUpdate.newLatLngZoom(latLng, 17));
+          _mapController.move(latLng, 16);
         }
       } catch (e) {
         debugPrint('Search Error: $e');
@@ -594,50 +604,64 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
   }
 
   Future<void> _searchLocation() async {
-    // Exact format requested: streetAddress,postalCode,city,state,country
-    final components = [
-      _addressController.text.trim(),
-      _postalController.text.trim(),
-      _selectedCity ?? '',
-      _selectedState ?? '',
-      _selectedCountry ?? '',
-    ];
-    final fullAddress = components.where((c) => c.isNotEmpty).join(',');
+    final street = _addressController.text.trim();
+    final city = _selectedCity ?? '';
+    final state = _selectedState ?? '';
+    final postalCode = _postalController.text.trim();
+    final country = _selectedCountry ?? '';
+
+    // Final full address string as requested by user
+    final fullAddress = "$street, $city, $state, $postalCode, $country";
     
-    if (fullAddress.isEmpty) return;
+    if (fullAddress.trim().isEmpty || fullAddress.replaceAll(',', '').trim().isEmpty) return;
 
     setState(() => _isSearching = true);
-    final result = await AuthService().searchLocation(fullAddress);
-    if (result['success']) {
-      final List data = result['data'];
-      if (data.isNotEmpty) {
-        final lat = double.tryParse(data[0]['lat'].toString());
-        final lon = double.tryParse(data[0]['lon'].toString());
-        if (lat != null && lon != null) {
-          final position = LatLng(lat, lon);
-          
-          if (_currentLatLng?.latitude == lat && _currentLatLng?.longitude == lon) {
-            setState(() => _isSearching = false);
-            return;
-          }
+    debugPrint('🔍 [Geocoding] Searching for: $fullAddress');
 
+    try {
+      // 1. Try Native Geocoding first (more reliable on mobile)
+      try {
+        List<Location> locations = await locationFromAddress(fullAddress);
+        if (locations.isNotEmpty) {
+          final loc = locations.first;
+          final position = ll.LatLng(loc.latitude, loc.longitude);
+          
           setState(() {
             _currentLatLng = position;
+            _isSearching = false;
           });
           
-          if (_mapController != null) {
-            await _mapController!.animateCamera(CameraUpdate.newLatLngZoom(position, 16));
-          } else {
-            setState(() => _isSearching = false);
-          }
-        } else {
-          setState(() => _isSearching = false);
+          _mapController.move(position, 15);
+          debugPrint('📍 [Geocoding] Found via Native: ${loc.latitude}, ${loc.longitude}');
+          return;
         }
-      } else {
-        setState(() => _isSearching = false);
+      } catch (e) {
+        debugPrint('⚠️ [Geocoding] Native fail, trying backend: $e');
       }
-    } else {
-      setState(() => _isSearching = false);
+
+      // 2. Fallback to Backend API
+      final result = await AuthService().searchLocation(fullAddress);
+      if (result['success']) {
+        final List data = result['data'];
+        if (data.isNotEmpty) {
+          final lat = double.tryParse(data[0]['lat'].toString());
+          final lon = double.tryParse(data[0]['lon'].toString());
+          if (lat != null && lon != null) {
+            final position = ll.LatLng(lat, lon);
+            
+            setState(() {
+              _currentLatLng = position;
+            });
+            
+            _mapController.move(position, 15);
+            debugPrint('📍 [Geocoding] Found via Backend: $lat, $lon');
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('🚨 [Geocoding] Global Error: $e');
+    } finally {
+      if (mounted) setState(() => _isSearching = false);
     }
   }
 
@@ -698,14 +722,14 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
       if (permission == LocationPermission.deniedForever) throw 'Location permissions are permanently denied.';
 
       Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-      final latLng = LatLng(position.latitude, position.longitude);
+      final latLng = ll.LatLng(position.latitude, position.longitude);
 
       setState(() {
         _currentLatLng = latLng;
         _isLocating = false;
       });
 
-      _mapController?.animateCamera(CameraUpdate.newLatLngZoom(latLng, 16));
+      _mapController.move(latLng, 16);
       
       await _reverseGeocode(position.latitude, position.longitude);
     } catch (e) {
@@ -934,10 +958,10 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
         }
 
         if (data['lat'] != null && data['lng'] != null) {
-          _currentLatLng = LatLng(
-            double.tryParse(data['lat'].toString()) ?? 28.5908,
-            double.tryParse(data['lng'].toString()) ?? 77.0433,
-          );
+          final lat = double.tryParse(data['lat'].toString()) ?? 28.5908;
+          final lng = double.tryParse(data['lng'].toString()) ?? 77.0433;
+          _currentLatLng = ll.LatLng(lat, lng);
+          _mapController.move(_currentLatLng!, 15);
         } else {
           // If no lat/lng, try to search from address
           _onAddressChanged();
