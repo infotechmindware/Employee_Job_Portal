@@ -3,12 +3,16 @@ import 'package:http/http.dart' as http;
 import 'auth_service.dart';
 import 'job_service.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class DashboardService {
   static const String baseUrl = 'https://www.mindwareinfotech.com/api/v1';
   static const String webUrl = 'https://www.mindwareinfotech.com';
 
   Future<Map<String, dynamic>> getDashboardData() async {
+    final prefs = await SharedPreferences.getInstance();
+    const cacheKey = 'dashboard_data_cache';
+
     try {
       final auth = AuthService();
       final token = await auth.getToken();
@@ -87,11 +91,16 @@ class DashboardService {
           dashboardData['stats'] != null
       )) {
         print('✅ Using API Data for Dashboard');
-        return {
-          ...dashboardData,
-          'analytics_data': trendsData.isNotEmpty ? trendsData : (dashboardData['analytics_data'] ?? []),
-          'recent_activities': activitiesData.isNotEmpty ? activitiesData : (dashboardData['recent_activities'] ?? []),
-        };
+      final finalData = {
+        ...dashboardData,
+        'analytics_data': trendsData.isNotEmpty ? trendsData : (dashboardData['analytics_data'] ?? []),
+        'recent_activities': activitiesData.isNotEmpty ? activitiesData : (dashboardData['recent_activities'] ?? []),
+      };
+
+      // Cache the successful response
+      prefs.setString(cacheKey, json.encode(finalData));
+      
+      return finalData;
       }
 
       // Otherwise, fallback to aggregation but still use the new trends/activities if available
@@ -105,7 +114,14 @@ class DashboardService {
 
     } catch (e, stack) {
       print('❌ Dashboard Service Error: $e');
-      print('StackTrace: $stack');
+      
+      // Fallback: Try to return cached data if API fails
+      final cachedStr = prefs.getString(cacheKey);
+      if (cachedStr != null) {
+        print('📦 Returning cached dashboard data due to error');
+        return json.decode(cachedStr);
+      }
+
       final auth = AuthService();
       final token = await auth.getToken();
       return await _aggregateDashboardData(token);

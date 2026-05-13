@@ -300,4 +300,29 @@ class JobService {
       return false;
     }
   }
+
+  static Future<bool> updateApplicationStatus(int applicationId, String status) async {
+    try {
+      final url = Uri.parse('$baseUrl/employer/applications/$applicationId');
+      final auth = AuthService();
+      final token = await auth.getToken();
+
+      final response = await http.put(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: jsonEncode({'status': status}),
+      ).timeout(const Duration(seconds: 10));
+
+      print('📝 Update Application Status Response (${response.statusCode}): ${response.body}');
+      return response.statusCode == 200;
+    } catch (e) {
+      print('❌ Update Application Status Error: $e');
+      return false;
+    }
+  }
 }

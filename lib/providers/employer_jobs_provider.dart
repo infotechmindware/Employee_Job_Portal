@@ -78,6 +78,19 @@ class EmployerJobsNotifier extends Notifier<AsyncValue<EmployerJobsState>> {
       print('Error toggling job status: $e');
     }
   }
+
+  Future<bool> updateApplicationStatus(int applicationId, String status) async {
+    try {
+      final success = await JobService.updateApplicationStatus(applicationId, status);
+      if (success) {
+        await fetchAll(showLoading: false);
+      }
+      return success;
+    } catch (e) {
+      print('Error updating application status: $e');
+      return false;
+    }
+  }
 }
 
 final employerJobsProvider = NotifierProvider<EmployerJobsNotifier, AsyncValue<EmployerJobsState>>(EmployerJobsNotifier.new);

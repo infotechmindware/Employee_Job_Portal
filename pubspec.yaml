@@ -38,6 +38,7 @@ dependencies:
   dropdown_search: ^7.0.0
   url_launcher: ^6.3.1
   razorpay_flutter: ^1.4.5
+  cached_network_image: ^3.4.1
 
 dev_dependencies:
   flutter_test:

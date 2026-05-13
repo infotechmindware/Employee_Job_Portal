@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import '../providers/navigation_provider.dart';
 import '../screens/dashboard/dashboard_screen.dart';
 import '../screens/candidates/candidate_applications_screen.dart';
@@ -114,11 +115,11 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
             showSelectedLabels: false,
             showUnselectedLabels: false,
             items: const [
-              BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), label: ''),
-              BottomNavigationBarItem(icon: Icon(Icons.people_outline), label: ''), // Candidates
-              BottomNavigationBarItem(icon: Icon(Icons.work_outline), label: ''), // Jobs
-              BottomNavigationBarItem(icon: Icon(Icons.message_outlined), label: ''), // Messages
-              BottomNavigationBarItem(icon: Icon(Icons.bar_chart_outlined), label: ''), // Analytics
+              BottomNavigationBarItem(icon: Icon(LucideIcons.layoutDashboard, size: 22), label: ''),
+              BottomNavigationBarItem(icon: Icon(LucideIcons.users, size: 22), label: ''), // Candidates
+              BottomNavigationBarItem(icon: Icon(LucideIcons.briefcase, size: 22), label: ''), // Jobs
+              BottomNavigationBarItem(icon: Icon(LucideIcons.messageCircle, size: 22), label: ''), // Messages
+              BottomNavigationBarItem(icon: Icon(LucideIcons.barChart3, size: 22), label: ''), // Analytics
             ],
           )
         : null,

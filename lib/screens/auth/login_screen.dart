@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../theme/app_colors.dart';
 import 'widgets/auth_layout.dart';
+import '../../providers/dashboard_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/auth_service.dart';
 
@@ -105,7 +106,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     if (success) {
       if (mounted) {
-        Navigator.pushReplacementNamed(context, '/dashboard');
+        // Pre-fetch dashboard data
+        try {
+          await ref.read(dashboardDataProvider.future);
+        } catch (e) {
+          debugPrint('Pre-fetch failed: $e');
+        }
+        
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, '/dashboard');
+        }
       }
     } else {
       if (mounted) {

@@ -710,33 +710,107 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
     setState(() => _isLocating = true);
     
     try {
+      // 1. Check if location services are enabled
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) throw 'Location services are disabled.';
+      if (!serviceEnabled) {
+        // Show dialog or snackbar to enable location
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Location services are disabled. Please enable GPS.'),
+              action: SnackBarAction(
+                label: 'Settings',
+                onPressed: () => Geolocator.openLocationSettings(),
+              ),
+            ),
+          );
+        }
+        setState(() => _isLocating = false);
+        return;
+      }
 
+      // 2. Check and request permissions
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) throw 'Location permissions are denied.';
+        if (permission == LocationPermission.denied) {
+          throw 'Location permissions are denied.';
+        }
       }
       
-      if (permission == LocationPermission.deniedForever) throw 'Location permissions are permanently denied.';
+      if (permission == LocationPermission.deniedForever) {
+        throw 'Location permissions are permanently denied. Please enable them from settings.';
+      }
 
-      Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      // 3. Fetch current position
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
       final latLng = ll.LatLng(position.latitude, position.longitude);
 
+      // 4. Update Map & State
       setState(() {
         _currentLatLng = latLng;
-        _isLocating = false;
       });
+      _mapController.move(latLng, 15);
 
-      _mapController.move(latLng, 16);
-      
-      await _reverseGeocode(position.latitude, position.longitude);
-    } catch (e) {
-      setState(() => _isLocating = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      // 5. Convert coordinates to address using Native Geocoding
+      try {
+        List<Placemark> placemarks = await placemarkFromCoordinates(
+          position.latitude, 
+          position.longitude,
+        );
+
+        if (placemarks.isNotEmpty) {
+          final p = placemarks.first;
+          
+          setState(() {
+            // 1. Fill Text Controllers
+            _postalController.text = p.postalCode ?? '';
+            _addressController.text = "${p.street ?? ''}, ${p.subLocality ?? ''}".replaceAll(', ,', ',').trim();
+            
+            // 2. Fill Dropdowns (State, City, Country)
+            _selectedCountry = p.country ?? 'India';
+
+            if (p.administrativeArea != null) {
+              // Try to find matching state in our LocationData keys
+              final foundState = LocationData.indiaStatesAndDistricts.keys.firstWhere(
+                (s) => s.toLowerCase().contains(p.administrativeArea!.toLowerCase()) || 
+                       p.administrativeArea!.toLowerCase().contains(s.toLowerCase()),
+                orElse: () => p.administrativeArea!,
+              );
+              _selectedState = foundState;
+
+              // Try to find matching city in the selected state's districts
+              if (LocationData.indiaStatesAndDistricts.containsKey(foundState)) {
+                final districts = LocationData.indiaStatesAndDistricts[foundState]!;
+                final foundCity = districts.firstWhere(
+                  (d) => d.toLowerCase().contains((p.locality ?? p.subAdministrativeArea ?? '').toLowerCase()) ||
+                         (p.locality ?? p.subAdministrativeArea ?? '').toLowerCase().contains(d.toLowerCase()),
+                  orElse: () => p.locality ?? p.subAdministrativeArea ?? '',
+                );
+                _selectedCity = foundCity;
+              } else {
+                _selectedCity = p.locality ?? p.subAdministrativeArea ?? '';
+              }
+            }
+          });
+          debugPrint('📍 [Location] Auto-fetched: ${_selectedCity}, ${_selectedState}');
+        }
+      } catch (e) {
+        debugPrint('⚠️ [Location] Native reverse geocode failed: $e');
+        // Fallback to existing backend geocoding if native fails
+        await _reverseGeocode(position.latitude, position.longitude);
       }
+
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLocating = false);
     }
   }
 

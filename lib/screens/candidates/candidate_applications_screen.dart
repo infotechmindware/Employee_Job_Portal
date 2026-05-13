@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'candidate_details_screen.dart';
 import '../subscription/subscription_plans_screen.dart';
 import '../../services/job_service.dart';
@@ -32,7 +33,7 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
   int _selectedTab = 0;
   String _selectedSortBy = 'Application date (newest first)';
   final TextEditingController _searchController = TextEditingController();
-  final List<String> _tabs = ['All', 'New', 'Contacting', 'Interviewed', 'Rejected', 'Hired', 'Shortlist'];
+  final List<String> _tabs = ['All', 'New', 'Contacting', 'Interviewed', 'Rejected', 'Hired', 'Shortlisted'];
 
   // Filter States
   String _filterLocation = '';
@@ -58,23 +59,8 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
   }
 
   Future<void> _fetchApplications() async {
-    setState(() => _isLoading = true);
-    try {
-      final status = _selectedTab == 0 ? null : _tabs[_selectedTab];
-      final data = await JobService.getEmployerApplications(
-        jobId: _selectedJob?['id']?.toString(),
-        status: status,
-      );
-      
-      if (mounted) {
-        setState(() {
-          _applications = data;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
-    }
+    // We now use the global provider, so we just refresh it
+    await ref.read(employerJobsProvider.notifier).fetchAll(showLoading: false);
   }
 
   void _clearFilters() {
@@ -94,6 +80,7 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
   @override
   Widget build(BuildContext context) {
     final bool isJobSelected = _selectedJob != null;
+    final employerState = ref.watch(employerJobsProvider);
     
     // Sync tab with navigation provider if needed
     final navState = ref.watch(navigationProvider);
@@ -101,7 +88,6 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           setState(() => _selectedTab = navState.applicationsTabIndex);
-          _fetchApplications();
         }
       });
     }
@@ -111,9 +97,9 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
       endDrawer: _buildFilterDrawer(),
       appBar: AppBar(
         backgroundColor: Colors.white,
-        surfaceTintColor: Colors.transparent, // Fix flickering while scrolling
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
-        automaticallyImplyLeading: false, // Remove back arrow as requested
+        automaticallyImplyLeading: false,
         title: Text(
           isJobSelected ? (_selectedJob!['title'] ?? 'Job Details') : 'All Candidates',
           style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.w900, fontSize: 20, letterSpacing: -0.5),
@@ -128,37 +114,86 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
           const SizedBox(width: 8),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _fetchApplications,
-        color: const Color(0xFF6366F1),
-        child: Column(
-          children: [
-            if (isJobSelected) 
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                child: _buildJobHeader(),
-              )
-            else
-              _buildDefaultHeader(),
+      body: employerState.when(
+        loading: () => const Center(child: CircularProgressIndicator(color: Color(0xFF6366F1))),
+        error: (err, stack) => Center(child: Text('Error: $err')),
+        data: (state) {
+          final allApps = state.applications;
+          
+          // Preload first 10 images for instant rendering
+          for (int i = 0; i < allApps.length && i < 10; i++) {
+            final cand = allApps[i]['candidate'] ?? {};
+            String? img = cand['profile_image'] ?? allApps[i]['profile_picture'];
+            if (img != null) {
+              if (!img.startsWith('http')) img = "https://www.mindwareinfotech.com$img";
+              precacheImage(CachedNetworkImageProvider(img), context);
+            }
+          }
+          
+          // Filter by Job if selected
+          final jobFiltered = isJobSelected 
+              ? allApps.where((app) => app['job_id']?.toString() == _selectedJob?['id']?.toString()).toList()
+              : allApps;
+
+          // Calculate counts for all tabs from job-filtered list
+          Map<String, int> tabCounts = {};
+          tabCounts['All'] = jobFiltered.length;
+            for (int i = 1; i < _tabs.length; i++) {
+              final tab = _tabs[i];
+              // Map UI tab name to backend status
+              String statusKey = tab.toLowerCase();
+              if (tab == 'Shortlisted') statusKey = 'shortlisted';
               
-            _buildTabSection(),
-            const Divider(height: 1, color: Color(0xFFF1F5F9)),
-            Expanded(
-              child: CustomScrollView(
-                slivers: [
-                  SliverToBoxAdapter(child: _buildUpgradeSection()),
-                  SliverToBoxAdapter(child: _buildTopFilterSection()),
-                  if (_isLoading)
-                    const SliverFillRemaining(child: Center(child: CircularProgressIndicator(color: Color(0xFF6366F1))))
-                  else if (_applications.isEmpty)
-                    SliverFillRemaining(child: _buildEmptyState())
-                  else
-                    _buildSliverList(),
-                ],
-              ),
+              tabCounts[tab] = jobFiltered.where((app) {
+                final s = app['status']?.toString().toLowerCase();
+                if (tab == 'New' && (s == 'applied' || s == 'new')) return true;
+                return s == statusKey;
+              }).length;
+            }
+
+            // Finally, filter by selected Tab
+            final currentTabName = _tabs[_selectedTab];
+            final filteredApps = currentTabName == 'All' 
+                ? jobFiltered 
+                : jobFiltered.where((app) {
+                    final s = app['status']?.toString().toLowerCase();
+                    String statusKey = currentTabName.toLowerCase();
+                    if (currentTabName == 'Shortlisted') statusKey = 'shortlisted';
+                    if (currentTabName == 'New' && (s == 'applied' || s == 'new')) return true;
+                    return s == statusKey;
+                  }).toList();
+
+          return RefreshIndicator(
+            onRefresh: () => ref.read(employerJobsProvider.notifier).fetchAll(),
+            color: const Color(0xFF6366F1),
+            child: Column(
+              children: [
+                if (isJobSelected) 
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    child: _buildJobHeader(),
+                  )
+                else
+                  _buildDefaultHeader(),
+                  
+                _buildTabSection(tabCounts),
+                const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                Expanded(
+                  child: CustomScrollView(
+                    slivers: [
+                      SliverToBoxAdapter(child: _buildUpgradeSection()),
+                      SliverToBoxAdapter(child: _buildTopFilterSection()),
+                      if (filteredApps.isEmpty)
+                        SliverFillRemaining(child: _buildEmptyState())
+                      else
+                        _buildSliverList(filteredApps),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -455,17 +490,11 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
     );
   }
 
-  Widget _buildTabSection() {
+  Widget _buildTabSection(Map<String, int> tabCounts) {
     final bool isJobSelected = _selectedJob != null;
     
     if (isJobSelected) {
-      return _buildJobStatsSection();
-    }
-
-    // Default status-based tabs
-    int getCount(String tab) {
-      if (tab == 'All') return _applications.length;
-      return _applications.where((app) => app['status']?.toString().toLowerCase() == tab.toLowerCase()).length;
+      return _buildJobStatsSection(tabCounts);
     }
 
     return Container(
@@ -474,18 +503,18 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
       height: 52,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        physics: const ClampingScrollPhysics(), // Prevent stretching
+        physics: const ClampingScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: 20),
         itemCount: _tabs.length,
         itemBuilder: (context, index) {
           final isSelected = _selectedTab == index;
-          final count = getCount(_tabs[index]);
+          final count = tabCounts[_tabs[index]] ?? 0;
           return Padding(
             padding: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
             child: InkWell(
               onTap: () {
                 setState(() => _selectedTab = index);
-                _fetchApplications();
+                ref.read(navigationProvider.notifier).setApplicationsTabIndex(index);
               },
               borderRadius: BorderRadius.circular(12),
               child: AnimatedContainer(
@@ -517,24 +546,22 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
                         fontSize: 13,
                       ),
                     ),
-                    if (count > 0 || index == 0) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: isSelected ? Colors.white.withOpacity(0.2) : const Color(0xFFE2E8F0),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          count.toString(),
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: isSelected ? Colors.white : const Color(0xFF64748B),
-                          ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: isSelected ? Colors.white.withOpacity(0.2) : const Color(0xFFE2E8F0),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        count.toString(),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: isSelected ? Colors.white : const Color(0xFF64748B),
                         ),
                       ),
-                    ],
+                    ),
                   ],
                 ),
               ),
@@ -545,10 +572,9 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
     );
   }
 
-  Widget _buildJobStatsSection() {
-    final responses = _applications.length;
-    final hotLeads = _applications.where((app) => app['status']?.toString().toLowerCase() == 'shortlisted').length;
-    final totalLeads = _applications.length;
+  Widget _buildJobStatsSection(Map<String, int> tabCounts) {
+    final responses = tabCounts['All'] ?? 0;
+    final hotLeads = tabCounts['Shortlist'] ?? 0;
     
     return Container(
       width: double.infinity,
@@ -568,7 +594,7 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
             children: [
               _buildStatCard('Database', '0', LucideIcons.database, const Color(0xFF3B82F6)),
               const SizedBox(width: 12),
-              _buildStatCard('Total Leads', totalLeads.toString(), LucideIcons.users, const Color(0xFF10B981)),
+              _buildStatCard('Total Leads', responses.toString(), LucideIcons.users, const Color(0xFF10B981)),
             ],
           ),
         ],
@@ -748,7 +774,7 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
     );
   }
 
-  Widget _buildSliverList() {
+  Widget _buildSliverList(List<dynamic> apps) {
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       sliver: SliverList(
@@ -756,11 +782,11 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
           (context, index) => Padding(
             padding: const EdgeInsets.only(bottom: 16),
             child: _CandidateCard(
-              app: _applications[index],
-              onTap: () => _showCandidatePreview(_applications[index]),
+              app: apps[index],
+              onTap: () => _showCandidatePreview(apps[index]),
             ),
           ),
-          childCount: _applications.length,
+          childCount: apps.length,
         ),
       ),
     );
@@ -853,11 +879,28 @@ class _CandidateCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                CircleAvatar(
-                  radius: 28,
-                  backgroundColor: const Color(0xFFF1F5F9),
-                  backgroundImage: imageUrl != null ? NetworkImage(imageUrl) : null,
-                  child: imageUrl == null ? Text(name[0].toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900)) : null,
+                SizedBox(
+                  width: 56,
+                  height: 56,
+                  child: ClipOval(
+                    child: imageUrl != null 
+                      ? CachedNetworkImage(
+                          imageUrl: imageUrl,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
+                            color: const Color(0xFFF1F5F9),
+                            child: const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF6366F1))),
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            color: const Color(0xFFF1F5F9),
+                            child: Center(child: Text(name[0].toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF6366F1)))),
+                          ),
+                        )
+                      : Container(
+                          color: const Color(0xFFF1F5F9),
+                          child: Center(child: Text(name[0].toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF6366F1)))),
+                        ),
+                  ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
