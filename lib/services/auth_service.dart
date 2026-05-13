@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
-  static const String baseUrl = 'https://mindwareinfotech.com/api/v1';
+  static const String baseUrl = 'https://www.mindwareinfotech.com/api/v1';
 
   // Temporary flag to bypass auth during development
   static const bool skipAuth = false; // Disabled bypass to allow real token testing
@@ -40,7 +40,7 @@ class AuthService {
       }
       
       final response = await http.post(
-        Uri.parse('https://mindwareinfotech.com/api/v1/login'),
+        Uri.parse('$baseUrl/login'),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -52,20 +52,42 @@ class AuthService {
         }),
       );
 
-      print('Login Response: ${response.body}');
+      print('Login Response (${response.statusCode}): ${response.body}');
 
       if (response.body.startsWith('{')) {
         final data = jsonDecode(response.body);
+        print("LOGIN DATA: $data");
+
         if (response.statusCode == 200) {
-          final prefs = await SharedPreferences.getInstance();
-          // Extract token from either 'token', 'access_token', or nested 'data' object
-          String? token = data['token'] ?? data['access_token'];
-          if (token == null && data['data'] != null) {
-            token = data['data']['token'] ?? data['data']['access_token'];
+          // Extract token from multiple possible locations
+          String? token;
+          if (data['token'] is String) token = data['token'];
+          if (token == null && data['access_token'] is String) token = data['access_token'];
+          
+          if (token == null && data['data'] != null && data['data'] is Map) {
+            final inner = data['data'] as Map;
+            if (inner['token'] is String) token = inner['token'];
+            if (token == null && inner['access_token'] is String) token = inner['access_token'];
           }
-          await prefs.setString('token', token ?? '');
-          print("TOKEN SAVED: $token");
-          return {'success': true, 'data': data};
+          
+          if (token == null && data['authorization'] != null && data['authorization'] is Map) {
+            final authData = data['authorization'] as Map;
+            if (authData['token'] is String) token = authData['token'];
+          }
+
+          if (token != null && token.isNotEmpty) {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString('token', token);
+            print("✅ TOKEN SAVED: ${token.substring(0, 10)}...");
+            return {'success': true, 'data': data};
+          } else {
+            print("⚠️ No token found in login response");
+            // If success is true but no token, we might still want to proceed if it's a multi-step login
+            if (data['success'] == true || data['status'] == 'success') {
+               return {'success': true, 'data': data};
+            }
+            return {'success': false, 'message': 'Authentication failed: No token received'};
+          }
         } else {
           final errorMessage = data['message'] ?? 'Login failed: ${response.statusCode}';
           
@@ -119,13 +141,13 @@ class AuthService {
       'Accept': 'application/json',
       'X-Requested-With': 'XMLHttpRequest',
       'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G973F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.106 Mobile Safari/537.36',
-      'Origin': 'https://mindwareinfotech.com',
-      'Referer': 'https://mindwareinfotech.com/',
+      'Origin': 'https://www.mindwareinfotech.com',
+      'Referer': 'https://www.mindwareinfotech.com/',
     };
 
     try {
       final response = await http.post(
-        Uri.parse('https://mindwareinfotech.com/api/v1/send-email-otp'),
+        Uri.parse('$baseUrl/send-email-otp'),
         headers: commonHeaders,
         body: jsonEncode({
           'email': email,
@@ -144,7 +166,7 @@ class AuthService {
       
       if (response.statusCode == 404 || response.statusCode == 403) {
         final fallbackResponse = await http.post(
-          Uri.parse('https://mindwareinfotech.com/auth/email/send-otp'),
+          Uri.parse('https://www.mindwareinfotech.com/auth/email/send-otp'),
           headers: commonHeaders,
           body: jsonEncode({
             'email': email,
@@ -268,7 +290,7 @@ class AuthService {
       final token = await getToken();
       
       final getResponse = await http.get(
-        Uri.parse('https://mindwareinfotech.com/api/v1/employer/profile'),
+        Uri.parse('$baseUrl/employer/profile'),
         headers: {
           'Accept': 'application/json',
           'Authorization': 'Bearer $token',
@@ -294,7 +316,7 @@ class AuthService {
     try {
       final token = await getToken();
 
-      var request = http.MultipartRequest('POST', Uri.parse('https://mindwareinfotech.com/api/v1/employer/profile'));
+      var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/employer/profile'));
       request.headers.addAll({
         'Accept': 'application/json',
         'Authorization': 'Bearer $token',
@@ -330,7 +352,7 @@ class AuthService {
   Future<Map<String, dynamic>> reverseGeocode(double lat, double lng) async {
     try {
       final response = await http.get(
-        Uri.parse('https://mindwareinfotech.com/api/geo/reverse?lat=$lat&lon=$lng'),
+        Uri.parse('https://www.mindwareinfotech.com/api/geo/reverse?lat=$lat&lon=$lng'),
         headers: {'Accept': 'application/json'},
       );
 
@@ -347,7 +369,7 @@ class AuthService {
   Future<Map<String, dynamic>> searchLocation(String query) async {
     try {
       final response = await http.get(
-        Uri.parse('https://mindwareinfotech.com/api/geo/search?q=${Uri.encodeComponent(query)}&limit=1'),
+        Uri.parse('https://www.mindwareinfotech.com/api/geo/search?q=${Uri.encodeComponent(query)}&limit=1'),
         headers: {'Accept': 'application/json'},
       );
 

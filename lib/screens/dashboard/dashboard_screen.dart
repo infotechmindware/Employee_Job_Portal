@@ -115,7 +115,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         children: [
           _buildModernHeader(),
           const SizedBox(height: 32),
-          _buildStatGrid(stats, isDesktop, isTablet),
+          RepaintBoundary(child: _buildStatGrid(stats, isDesktop, isTablet)),
           const SizedBox(height: 32),
           
           if (isDesktop)
@@ -150,9 +150,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               children: [
                 _buildQuickActionsGrid(),
                 const SizedBox(height: 32),
-                _buildRecentJobsSection(recentJobs),
+                RepaintBoundary(child: _buildRecentJobsSection(recentJobs)),
                 const SizedBox(height: 32),
-                _buildChartSection(data, isDesktop, isTablet),
+                RepaintBoundary(child: _buildChartSection(data, isDesktop, isTablet)),
                 const SizedBox(height: 32),
                 _buildActivitySection(activities),
               ],
@@ -240,7 +240,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 30, offset: const Offset(0, 15))],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -390,7 +390,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 30, offset: const Offset(0, 15))],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -428,7 +428,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     LineChartData(
                       minY: 0,
                       maxY: _calculateMaxY(chartData),
-                      clipData: const FlClipData.all(),
+                      clipData: const FlClipData.none(),
                       gridData: FlGridData(
                         show: true,
                         drawVerticalLine: false,
@@ -547,7 +547,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 30, offset: const Offset(0, 15))],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

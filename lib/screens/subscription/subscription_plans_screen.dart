@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../../theme/app_colors.dart';
 import 'subscription_dashboard_screen.dart';
-import '../../widgets/subscription/payment_modal.dart';
+import '../../services/subscription_service.dart';
+import '../../services/auth_service.dart';
 
 class SubscriptionPlansScreen extends StatefulWidget {
   const SubscriptionPlansScreen({super.key});
@@ -17,10 +19,17 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
   String _selectedPlan = 'Premium';
   final FocusNode _promoFocusNode = FocusNode();
   bool _isPromoFocused = false;
+  bool _isProcessing = false;
+  late Razorpay _razorpay;
 
   @override
   void initState() {
     super.initState();
+    _razorpay = Razorpay();
+    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
+    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
+    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
+
     _promoFocusNode.addListener(() {
       setState(() {
         _isPromoFocused = _promoFocusNode.hasFocus;
@@ -30,8 +39,163 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
 
   @override
   void dispose() {
+    _razorpay.clear();
     _promoFocusNode.dispose();
     super.dispose();
+  }
+
+  void _handlePaymentSuccess(PaymentSuccessResponse response) async {
+    debugPrint("✅ [Razorpay] Payment Success: ${response.paymentId}");
+    _verifyPaymentOnBackend(response);
+  }
+
+  void _handlePaymentError(PaymentFailureResponse response) {
+    debugPrint("🚨 [Razorpay] Payment Error: ${response.code} - ${response.message}");
+    setState(() => _isProcessing = false);
+    _showSnackBar("Payment Failed: ${response.message}", Colors.red);
+  }
+
+  void _handleExternalWallet(ExternalWalletResponse response) {
+    debugPrint("💼 [Razorpay] External Wallet: ${response.walletName}");
+    setState(() => _isProcessing = false);
+  }
+
+  void _verifyPaymentOnBackend(PaymentSuccessResponse response) async {
+    setState(() => _isProcessing = true);
+    debugPrint("🔍 [Razorpay] Verifying payment on server: ${response.paymentId}");
+    
+    try {
+      final verifyRes = await SubscriptionService.verifyPayment(
+        orderId: response.orderId ?? "",
+        paymentId: response.paymentId ?? "",
+        signature: response.signature ?? "",
+      );
+
+      if (verifyRes['success']) {
+        debugPrint("✅ [Razorpay] Server Verification Successful");
+        _showSuccessUI(response.paymentId ?? "");
+      } else {
+        debugPrint("❌ [Razorpay] Server Verification Failed: ${verifyRes['message']}");
+        _showSnackBar(verifyRes['message'] ?? "Payment verification failed", Colors.red);
+      }
+    } catch (e) {
+      debugPrint("❌ [Razorpay] Verification Error: $e");
+      _showSnackBar("Verification Error: $e", Colors.red);
+    } finally {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
+    }
+  }
+
+  void _startPaymentFlow(String planTitle, String price) async {
+    setState(() => _isProcessing = true);
+    debugPrint("🚀 [Razorpay] Initiating Mobile Payment Flow for: $planTitle");
+
+    try {
+      // Map plan title to ID as expected by backend
+      int planId = 1; // Default to Basic
+      if (planTitle == 'Premium') planId = 2;
+      if (planTitle == 'Enterprise') planId = 3;
+
+      final orderResponse = await SubscriptionService.createOrder(
+        planId: planId,
+        gateway: 'razorpay',
+      );
+
+      if (!orderResponse['success']) {
+        throw Exception(orderResponse['message'] ?? "Failed to create order");
+      }
+
+      final data = orderResponse['data'];
+      
+      // IMPORTANT: Amount already comes in paise from backend. Do NOT multiply.
+      final dynamic amount = data['amount'];
+      final String? orderId = data['order_id'];
+      final String? razorpayKey = data['razorpay_key'];
+
+      debugPrint("🔑 [Razorpay] Order ID: $orderId");
+      debugPrint("💰 [Razorpay] Amount (Paise): $amount");
+
+      if (orderId == null || orderId.isEmpty) {
+        throw Exception("Backend did not provide a valid order_id");
+      }
+
+      // Fetch user info for prefill if possible
+      // Using existing defaults if not available
+      final String userEmail = 'employer@mindware.com';
+      final String userPhone = '+919334749028';
+
+      var options = {
+        'key': razorpayKey,
+        'amount': amount,
+        'order_id': orderId,
+        'name': 'Mindware',
+        'description': '$planTitle Subscription Payment',
+        'currency': 'INR',
+        'timeout': 300,
+        'prefill': {
+          'contact': userPhone,
+          'email': userEmail
+        },
+        'retry': {'enabled': true, 'max_count': 1},
+        'send_sms_hash': true,
+      };
+
+      debugPrint("💳 [Razorpay] Opening SDK with Options: $options");
+      _razorpay.open(options);
+    } catch (e) {
+      debugPrint("🚨 [Razorpay] Mobile Error: $e");
+      _showSnackBar("Payment Error: $e", Colors.red);
+    } finally {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
+    }
+  }
+
+  void _showSnackBar(String message, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: color, behavior: SnackBarBehavior.floating),
+    );
+  }
+
+  void _showSuccessUI(String paymentId) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Container(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(LucideIcons.checkCircle, color: Colors.green, size: 64),
+              const SizedBox(height: 24),
+              const Text('Payment Successful!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              const Text('Your subscription is now active.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
+              const SizedBox(height: 8),
+              Text('Ref: $paymentId', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+              const SizedBox(height: 32),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop(); // Pop success dialog
+                  Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const SubscriptionDashboardScreen()));
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2563EB),
+                  minimumSize: const Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('Go to Dashboard', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -403,14 +567,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                         ),
                       );
                     } else {
-                      showDialog(
-                        context: context,
-                        barrierDismissible: true,
-                        builder: (context) => PaymentModal(
-                          planTitle: p['title'] as String,
-                          price: _getPrice(p['title'] as String),
-                        ),
-                      );
+                      _startPaymentFlow(p['title'] as String, _getPrice(p['title'] as String));
                     }
                   },
                   style: ElevatedButton.styleFrom(
@@ -420,7 +577,9 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     elevation: 0,
                   ),
-                  child: const Text('Get Started', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: _isProcessing && _selectedPlan == p['title']
+                      ? const Center(child: SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)))
+                      : const Text('Get Started', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ),
             ],

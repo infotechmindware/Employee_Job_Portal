@@ -5,15 +5,15 @@ import 'job_service.dart';
 import 'package:intl/intl.dart';
 
 class DashboardService {
-  static const String baseUrl = 'https://mindwareinfotech.com/api/v1';
-  static const String webUrl = 'https://mindwareinfotech.com';
+  static const String baseUrl = 'https://www.mindwareinfotech.com/api/v1';
+  static const String webUrl = 'https://www.mindwareinfotech.com';
 
   Future<Map<String, dynamic>> getDashboardData() async {
     try {
       final auth = AuthService();
       final token = await auth.getToken();
 
-      print('🚀 Fetching Dashboard Data...');
+      print('🚀 Fetching Dashboard Data with token: ${token != null ? (token.length > 10 ? "${token.substring(0, 10)}..." : "short") : "NULL"}');
 
       // Fetch core dashboard data, trends and activities in parallel
       final results = await Future.wait([
@@ -26,13 +26,36 @@ class DashboardService {
       final trendsRes = results[1];
       final activitiesRes = results[2];
 
+      print('📡 Dashboard Response (${dashboardRes.statusCode}): ${dashboardRes.body}');
+      print('📈 Trends Response (${trendsRes.statusCode}): ${trendsRes.body}');
+      print('🔔 Activities Response (${activitiesRes.statusCode}): ${activitiesRes.body}');
+
       Map<String, dynamic> dashboardData = {};
       if (dashboardRes.statusCode == 200) {
         final dynamic body = json.decode(dashboardRes.body);
         if (body is Map) {
           dashboardData = body['data'] ?? body;
+          
+          // Flatten stats if they are nested in a 'stats' object
+          if (dashboardData['stats'] != null && dashboardData['stats'] is Map) {
+            final stats = dashboardData['stats'] as Map<String, dynamic>;
+            stats.forEach((key, value) {
+              if (dashboardData[key] == null) {
+                dashboardData[key] = value;
+              }
+            });
+          }
         }
       }
+      
+      // Normalize keys (common Laravel mismatches)
+      _normalize(dashboardData, 'active_jobs', ['activeJobs', 'active_jobs_count', 'activeJobsCount']);
+      _normalize(dashboardData, 'total_applications', ['totalApplications', 'total_applications_count', 'totalApplicationsCount', 'applications_count']);
+      _normalize(dashboardData, 'new_applications', ['newApplications', 'new_applications_count', 'newApplicationsCount', 'unread_applications_count']);
+      _normalize(dashboardData, 'interviews_scheduled', ['interviewsScheduled', 'interviews_scheduled_count', 'interviewsScheduledCount', 'interviews_count']);
+      _normalize(dashboardData, 'recent_jobs', ['recentJobs', 'latest_jobs', 'jobs']);
+
+      print('📦 Normalized Dashboard Data: $dashboardData');
 
       List<dynamic> trendsData = [];
       if (trendsRes.statusCode == 200) {
@@ -40,7 +63,7 @@ class DashboardService {
         if (body is List) {
           trendsData = body;
         } else if (body is Map) {
-          trendsData = body['data'] ?? body['trends'] ?? body['analytics_data'] ?? [];
+          trendsData = body['data'] ?? body['trends'] ?? body['analytics_data'] ?? body['chart_data'] ?? [];
         }
       }
 
@@ -50,12 +73,20 @@ class DashboardService {
         if (body is List) {
           activitiesData = body;
         } else if (body is Map) {
-          activitiesData = body['activities'] ?? body['data'] ?? [];
+          activitiesData = body['activities'] ?? body['data'] ?? body['recent_activities'] ?? [];
         }
       }
 
+      print('📈 Trends Data Count: ${trendsData.length}');
+      print('🔔 Activities Data Count: ${activitiesData.length}');
+
       // If we got valid data from the main dashboard API, merge it with trends and activities
-      if (dashboardData.isNotEmpty && (dashboardData['active_jobs'] != null || dashboardData['stats'] != null || dashboardData['total_applications'] != null)) {
+      if (dashboardData.isNotEmpty && (
+          dashboardData['active_jobs'] != null || 
+          dashboardData['total_applications'] != null ||
+          dashboardData['stats'] != null
+      )) {
+        print('✅ Using API Data for Dashboard');
         return {
           ...dashboardData,
           'analytics_data': trendsData.isNotEmpty ? trendsData : (dashboardData['analytics_data'] ?? []),
@@ -65,17 +96,29 @@ class DashboardService {
 
       // Otherwise, fallback to aggregation but still use the new trends/activities if available
       final aggregated = await _aggregateDashboardData(token);
+      print('🔄 Using Aggregated Data as fallback');
       return {
         ...aggregated,
         'analytics_data': trendsData.isNotEmpty ? trendsData : aggregated['analytics_data'],
         'recent_activities': activitiesData.isNotEmpty ? activitiesData : aggregated['recent_activities'],
       };
 
-    } catch (e) {
+    } catch (e, stack) {
       print('❌ Dashboard Service Error: $e');
+      print('StackTrace: $stack');
       final auth = AuthService();
       final token = await auth.getToken();
       return await _aggregateDashboardData(token);
+    }
+  }
+
+  void _normalize(Map<String, dynamic> data, String targetKey, List<String> sourceKeys) {
+    if (data[targetKey] != null) return;
+    for (var key in sourceKeys) {
+      if (data[key] != null) {
+        data[targetKey] = data[key];
+        return;
+      }
     }
   }
 

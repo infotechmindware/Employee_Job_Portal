@@ -3,8 +3,8 @@ import 'package:http/http.dart' as http;
 import 'auth_service.dart';
 
 class JobService {
-  static const String baseUrl = 'https://mindwareinfotech.com/api/v1';
-  static const String searchBaseUrl = 'https://mindwareinfotech.com/api';
+  static const String baseUrl = 'https://www.mindwareinfotech.com/api/v1';
+  static const String searchBaseUrl = 'https://www.mindwareinfotech.com/api';
 
   /// Search job titles exactly like web version
   static Future<List<String>> getJobTitleSuggestions(String query) async {
@@ -167,17 +167,19 @@ class JobService {
         },
       ).timeout(const Duration(seconds: 15));
 
+      print('💼 Get Jobs Response (${response.statusCode}): ${response.body}');
+
       if (response.statusCode == 200) {
         final result = json.decode(response.body);
-        if (result['status'] == true || result['success'] == true) {
-          final data = result['data'];
+        if (result['status'] == true || result['success'] == true || result['data'] != null) {
+          final data = result['data'] ?? result;
           if (data is Map) {
-            return data['jobs'] ?? [];
+            return data['jobs'] ?? data['data'] ?? data['results'] ?? [];
           } else if (data is List) {
             return data;
           }
         }
-        return result is List ? result : [];
+        return result is List ? result : (result['jobs'] ?? result['data'] ?? []);
       }
       return [];
     } catch (e) {
@@ -205,21 +207,23 @@ class JobService {
         },
       ).timeout(const Duration(seconds: 15));
 
+      print('📝 Get Applications Response (${response.statusCode}): ${response.body}');
+
       if (response.statusCode == 200) {
         final result = json.decode(response.body);
-        if (result['status'] == true || result['success'] == true) {
-          final data = result['data'];
+        if (result['status'] == true || result['success'] == true || result['data'] != null) {
+          final data = result['data'] ?? result;
           if (data is Map) {
-            // Handle both result['data']['applications'] and result['data']['data']['applications']
+            // Handle deeply nested or flat structures
             if (data['data'] != null && data['data'] is Map && data['data']['applications'] != null) {
               return data['data']['applications'];
             }
-            return data['applications'] ?? [];
+            return data['applications'] ?? data['data'] ?? data['results'] ?? [];
           } else if (data is List) {
             return data;
           }
         }
-        return result is List ? result : [];
+        return result is List ? result : (result['applications'] ?? result['data'] ?? []);
       }
       return [];
     } catch (e) {

@@ -254,24 +254,30 @@ class _ImageUploadCardState extends State<ImageUploadCard> {
   Widget _buildPreview() {
     return Stack(
       children: [
-        // Layered preview: Background blurred (to fill space) + Foreground crisp (to show full image)
         ClipRRect(
           borderRadius: BorderRadius.circular(16),
           child: Stack(
             children: [
-              // Blurred Background (fills card)
+              // Background Image (fills card)
               Image.file(
                 _selectedImage!,
                 width: double.infinity,
                 height: double.infinity,
                 fit: BoxFit.cover,
               ),
-              // Blur Effect
+              // Gradient Overlay (replacing expensive BackdropFilter)
               Positioned.fill(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                  child: Container(
-                    color: Colors.black.withOpacity(0.1),
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withOpacity(0.4),
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.4),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -285,20 +291,6 @@ class _ImageUploadCardState extends State<ImageUploadCard> {
                 ),
               ),
             ],
-          ),
-        ),
-        Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.black.withOpacity(0.4),
-                Colors.transparent,
-                Colors.black.withOpacity(0.4),
-              ],
-            ),
           ),
         ),
         Positioned(
@@ -354,10 +346,10 @@ class _ImageUploadCardState extends State<ImageUploadCard> {
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: isDestructive ? const Color(0xFFEF4444).withOpacity(0.9) : Colors.white.withOpacity(0.9),
+          color: isDestructive ? const Color(0xFFEF4444).withOpacity(0.9) : Colors.white,
           borderRadius: BorderRadius.circular(8),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4),
+            BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 4, offset: const Offset(0, 2)),
           ],
         ),
         child: Icon(
