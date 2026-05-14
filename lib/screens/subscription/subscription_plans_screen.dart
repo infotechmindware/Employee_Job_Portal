@@ -5,6 +5,7 @@ import '../../theme/app_colors.dart';
 import 'subscription_dashboard_screen.dart';
 import '../../services/subscription_service.dart';
 import '../../services/auth_service.dart';
+import 'payment_success_screen.dart';
 
 class SubscriptionPlansScreen extends StatefulWidget {
   const SubscriptionPlansScreen({super.key});
@@ -20,6 +21,10 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
   final FocusNode _promoFocusNode = FocusNode();
   bool _isPromoFocused = false;
   bool _isProcessing = false;
+  String? _activeSubscriptionId;
+  String? _activeInternalPaymentId;
+  String? _activePlanName;
+  String? _activeAmount;
   late Razorpay _razorpay;
 
   @override
@@ -52,12 +57,26 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
   void _handlePaymentError(PaymentFailureResponse response) {
     debugPrint("🚨 [Razorpay] Payment Error: ${response.code} - ${response.message}");
     setState(() => _isProcessing = false);
-    _showSnackBar("Payment Failed: ${response.message}", Colors.red);
+    
+    // Handle cancellation vs failure
+    // Code 2 is usually user cancellation
+    String errorMessage = "Payment cancelled";
+    
+    if (response.code != 2) {
+      errorMessage = response.message ?? "Payment failed";
+      // If message is still "undefined" or null, fallback
+      if (errorMessage.toLowerCase() == 'undefined' || errorMessage.isEmpty) {
+        errorMessage = "Payment was not completed";
+      }
+    }
+
+    _showSnackBar(errorMessage, Colors.red);
   }
 
   void _handleExternalWallet(ExternalWalletResponse response) {
-    debugPrint("💼 [Razorpay] External Wallet: ${response.walletName}");
+    debugPrint("💳 [Razorpay] External Wallet Selected: ${response.walletName}");
     setState(() => _isProcessing = false);
+    _showSnackBar("External wallet ${response.walletName} selected", Colors.blue);
   }
 
   void _verifyPaymentOnBackend(PaymentSuccessResponse response) async {
@@ -67,13 +86,26 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
     try {
       final verifyRes = await SubscriptionService.verifyPayment(
         orderId: response.orderId ?? "",
-        paymentId: response.paymentId ?? "",
+        paymentId: _activeInternalPaymentId ?? "",
+        razorpayPaymentId: response.paymentId ?? "",
         signature: response.signature ?? "",
+        subscriptionId: _activeSubscriptionId ?? "",
       );
 
       if (verifyRes['success']) {
         debugPrint("✅ [Razorpay] Server Verification Successful");
-        _showSuccessUI(response.paymentId ?? "");
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => PaymentSuccessScreen(
+                planName: _activePlanName ?? "Premium",
+                paymentId: response.paymentId ?? "N/A",
+                amount: _activeAmount ?? "0",
+              ),
+            ),
+          );
+        }
       } else {
         debugPrint("❌ [Razorpay] Server Verification Failed: ${verifyRes['message']}");
         _showSnackBar(verifyRes['message'] ?? "Payment verification failed", Colors.red);
@@ -88,19 +120,25 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
     }
   }
 
-  void _startPaymentFlow(String planTitle, String price) async {
+  void _startPaymentFlow(Map<String, dynamic> plan, String price) async {
+    final String planTitle = plan['title'];
+    final int planId = plan['id'] ?? 1;
+    
     setState(() => _isProcessing = true);
-    debugPrint("🚀 [Razorpay] Initiating Mobile Payment Flow for: $planTitle");
+    
+    // Map billing cycle index to string
+    String billingCycle = 'monthly';
+    if (_selectedBillingCycle == 1) billingCycle = 'quarterly';
+    if (_selectedBillingCycle == 2) billingCycle = 'annual';
+
+    debugPrint("🚀 [Razorpay] Initiating Flow for: $planTitle (ID: $planId, Cycle: $billingCycle)");
 
     try {
-      // Map plan title to ID as expected by backend
-      int planId = 1; // Default to Basic
-      if (planTitle == 'Premium') planId = 2;
-      if (planTitle == 'Enterprise') planId = 3;
-
       final orderResponse = await SubscriptionService.createOrder(
         planId: planId,
         gateway: 'razorpay',
+        billingCycle: billingCycle,
+        paymentMethod: 'card',
       );
 
       if (!orderResponse['success']) {
@@ -109,29 +147,65 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
 
       final data = orderResponse['data'];
       
-      // IMPORTANT: Amount already comes in paise from backend. Do NOT multiply.
-      final dynamic amount = data['amount'];
-      final String? orderId = data['order_id'];
-      final String? razorpayKey = data['razorpay_key'];
+      // Extraction according to real Swagger response body
+      final String? razorpayKey = data['key'] ?? data['razorpay_key']; 
+      final String? orderId = data['order_id'] ?? data['gateway_order_id'];
+      final dynamic rawAmount = data['amount']; 
+      final String? subscriptionId = (data['subscription_id'])?.toString();
+      final String? internalPaymentId = data['payment_id']?.toString();
 
-      debugPrint("🔑 [Razorpay] Order ID: $orderId");
-      debugPrint("💰 [Razorpay] Amount (Paise): $amount");
-
-      if (orderId == null || orderId.isEmpty) {
-        throw Exception("Backend did not provide a valid order_id");
+      // Ensure amount is in paise (Razorpay requirement)
+      int amountInPaise;
+      double parsedAmount = double.tryParse(rawAmount.toString()) ?? 0;
+      
+      if (parsedAmount < 10000) { 
+        amountInPaise = (parsedAmount * 100).toInt();
+      } else {
+        amountInPaise = parsedAmount.toInt();
       }
 
-      // Fetch user info for prefill if possible
-      // Using existing defaults if not available
-      final String userEmail = 'employer@mindware.com';
-      final String userPhone = '+919334749028';
+      setState(() {
+        _activeSubscriptionId = subscriptionId;
+        _activeInternalPaymentId = internalPaymentId;
+        _activePlanName = planTitle;
+        _activeAmount = parsedAmount.toStringAsFixed(0);
+        if (_activeAmount == "0") _activeAmount = price; 
+      });
+
+      if (razorpayKey == null || razorpayKey.isEmpty) {
+        throw Exception("Razorpay API Key is missing from backend response.");
+      }
+
+      if (orderId == null || orderId.isEmpty) {
+        throw Exception("Razorpay Order ID is missing from backend response.");
+      }
+
+      // Fetch dynamic user info for prefill
+      final auth = AuthService();
+      final profileRes = await auth.getProfile();
+      String userEmail = 'employer@mindware.com';
+      String userPhone = '+919334749028';
+
+      if (profileRes['success'] && profileRes['data'] != null) {
+        final profile = profileRes['data'];
+        userEmail = profile['email'] ?? userEmail;
+        userPhone = profile['phone'] ?? profile['mobile'] ?? userPhone;
+      }
+
+      debugPrint("💳 [Razorpay] Final Options to Open SDK:");
+      debugPrint("   - Plan: $planTitle (ID: $planId)");
+      debugPrint("   - Order ID: $orderId");
+      debugPrint("   - Internal Payment ID: $internalPaymentId");
+      debugPrint("   - Subscription ID: $subscriptionId");
+      debugPrint("   - Amount to Charge (Paise): $amountInPaise");
+      debugPrint("   - User Prefill: $userEmail / $userPhone");
 
       var options = {
         'key': razorpayKey,
-        'amount': amount,
+        'amount': amountInPaise,
         'order_id': orderId,
-        'name': 'Mindware',
-        'description': '$planTitle Subscription Payment',
+        'name': 'Mindware Infotech',
+        'description': '$planTitle Subscription ($billingCycle)',
         'currency': 'INR',
         'timeout': 300,
         'prefill': {
@@ -204,20 +278,93 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(isDesktop ? 48 : 16),
-        child: Column(
-          children: [
-            _buildHeader(),
-            const SizedBox(height: 48),
-            _buildBillingAndGateway(isDesktop),
-            const SizedBox(height: 40),
-            _buildPromoCodeSection(isDesktop),
-            const SizedBox(height: 48),
-            _buildPlansSection(isDesktop),
-            const SizedBox(height: 64),
-          ],
-        ),
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            padding: EdgeInsets.all(isDesktop ? 48 : 16),
+            child: Column(
+              children: [
+                _buildHeader(),
+                const SizedBox(height: 48),
+                _buildBillingAndGateway(isDesktop),
+                const SizedBox(height: 40),
+                _buildPromoCodeSection(isDesktop),
+                const SizedBox(height: 48),
+                _buildPlansSection(isDesktop),
+                const SizedBox(height: 64),
+              ],
+            ),
+          ),
+          if (_isProcessing)
+            Container(
+              color: Colors.black.withOpacity(0.4),
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.all(32),
+                  margin: const EdgeInsets.symmetric(horizontal: 40),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2563EB)),
+                        strokeWidth: 3,
+                      ),
+                      const SizedBox(height: 24),
+                      const Text(
+                        'Redirecting to Secure Payment',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1E293B),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Please do not close or go back...',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Image.network(
+                            'https://www.mindwareinfotech.com/assets/images/logo.png',
+                            height: 24,
+                            errorBuilder: (_, __, ___) => const Icon(LucideIcons.shieldCheck, color: Color(0xFF2563EB)),
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Secured by Razorpay',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF94A3B8),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -450,19 +597,23 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
   Widget _buildPlansSection(bool isDesktop) {
     final plans = [
       {
+        'id': 1,
         'title': 'Free',
         'desc': 'Perfect for startups and small businesses',
       },
       {
+        'id': 2,
         'title': 'Basic',
         'desc': 'Essential features for growing businesses',
       },
       {
+        'id': 3,
         'title': 'Premium',
         'desc': 'Advanced features for established companies',
         'isPopular': true,
       },
       {
+        'id': 4,
         'title': 'Enterprise',
         'desc': 'Custom solutions for large organizations',
       },
@@ -567,7 +718,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                         ),
                       );
                     } else {
-                      _startPaymentFlow(p['title'] as String, _getPrice(p['title'] as String));
+                      _startPaymentFlow(p, _getPrice(p['title'] as String));
                     }
                   },
                   style: ElevatedButton.styleFrom(

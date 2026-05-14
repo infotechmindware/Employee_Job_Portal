@@ -8,6 +8,8 @@ class SubscriptionService {
   static Future<Map<String, dynamic>> createOrder({
     required int planId,
     required String gateway,
+    String? billingCycle,
+    String paymentMethod = 'card',
   }) async {
     try {
       final url = '$baseUrl/payments/initiate';
@@ -27,6 +29,8 @@ class SubscriptionService {
         body: jsonEncode({
           'plan_id': planId,
           'gateway': gateway,
+          'billing_cycle': billingCycle ?? 'monthly',
+          'payment_method': paymentMethod,
         }),
       ).timeout(const Duration(seconds: 15));
 
@@ -65,7 +69,9 @@ class SubscriptionService {
   static Future<Map<String, dynamic>> verifyPayment({
     required String orderId,
     required String paymentId,
+    required String razorpayPaymentId,
     required String signature,
+    required String subscriptionId,
   }) async {
     try {
       final url = '$baseUrl/payments/verify';
@@ -83,15 +89,20 @@ class SubscriptionService {
           'X-Requested-With': 'XMLHttpRequest',
         },
         body: jsonEncode({
+          'order_id': orderId,
+          'payment_id': paymentId,
           'razorpay_order_id': orderId,
-          'razorpay_payment_id': paymentId,
+          'razorpay_payment_id': razorpayPaymentId,
           'razorpay_signature': signature,
+          'subscription_id': subscriptionId,
+          'signature': signature,
         }),
       ).timeout(const Duration(seconds: 15));
 
       final bodyData = jsonDecode(response.body);
+      print('📦 [Razorpay] Verify Response: ${response.body}');
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || bodyData['success'] == true) {
         return {
           'success': true,
           'data': bodyData['data'] ?? bodyData,
@@ -132,6 +143,38 @@ class SubscriptionService {
       }
       return {'success': false, 'message': 'Failed to fetch plans'};
     } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> getBillingOverview() async {
+    try {
+      final url = '$baseUrl/employer/billing/overview';
+      final auth = AuthService();
+      final token = await auth.getToken();
+      
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      ).timeout(const Duration(seconds: 15));
+
+      final bodyData = jsonDecode(response.body);
+      if (response.statusCode == 200 || bodyData['success'] == true) {
+        return {
+          'success': true,
+          'data': bodyData['data'] ?? bodyData,
+        };
+      }
+      return {
+        'success': false, 
+        'message': bodyData['message'] ?? 'Failed to fetch billing overview'
+      };
+    } catch (e) {
+      print('❌ [Billing] Error: $e');
       return {'success': false, 'message': 'Network error: $e'};
     }
   }

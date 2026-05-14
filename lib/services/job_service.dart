@@ -232,6 +232,75 @@ class JobService {
     }
   }
 
+  static Future<Map<String, dynamic>> getEmployerInterviews() async {
+    try {
+      final auth = AuthService();
+      final token = await auth.getToken();
+      final url = Uri.parse('$baseUrl/employer/interviews?include=candidate,job,application&per_page=1000');
+
+      print('🚀 [API] Fetching ALL Interviews from: $url');
+
+      final response = await http.get(
+        url,
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      ).timeout(const Duration(seconds: 15));
+
+      print('📡 [API] Interviews Status: ${response.statusCode}');
+      print('📦 [API] Interviews Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final result = json.decode(response.body);
+        
+        List<dynamic> interviews = [];
+        Map<String, dynamic> stats = {};
+
+        if (result is Map) {
+          // Robust parsing for Interviews List
+          final dynamic data = result['data'];
+          if (result['interviews'] is List) {
+            interviews = result['interviews'];
+          } else if (data is List) {
+            interviews = data;
+          } else if (data is Map) {
+            interviews = data['interviews'] ?? data['data'] ?? [];
+          }
+
+          // Robust parsing for Stats
+          final dynamic apiStats = result['stats'] ?? (data is Map ? data['stats'] : null);
+          if (apiStats is Map) {
+            stats = Map<String, dynamic>.from(apiStats);
+          } else {
+            // Fallback: Check root level for common Laravel stat keys
+            stats = {
+              'total': result['total'] ?? result['total_interviews'],
+              'upcoming': result['upcoming'] ?? result['upcoming_interviews'],
+              'today': result['today'] ?? result['today_interviews'],
+              'week': result['week'] ?? result['next_7_days'] ?? result['week_interviews'],
+              'completed': result['completed'] ?? result['finished_interviews'],
+              'missed': result['missed'] ?? result['declined'] ?? result['declined_interviews'],
+            };
+          }
+        } else if (result is List) {
+          interviews = result;
+        }
+
+        print('✅ [API] Success! Parsed ${interviews.length} interviews. Stats: $stats');
+        return {
+          'interviews': interviews,
+          'stats': stats,
+        };
+      }
+      return {'interviews': [], 'stats': {}};
+    } catch (e) {
+      print('❌ [API] Get Employer Interviews Error: $e');
+      return {'interviews': [], 'stats': {}};
+    }
+  }
+
   static Future<Map<String, dynamic>?> getJobDetails(int jobId) async {
     try {
       final url = Uri.parse('$baseUrl/employer/jobs/$jobId');

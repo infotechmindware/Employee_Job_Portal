@@ -21,12 +21,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordController = TextEditingController();
   final _mobileController = TextEditingController();
   final _otpController = TextEditingController();
-  final _emailOtpController = TextEditingController();
   
   bool _isEmailLogin = true;
   bool _obscurePassword = true;
   bool _rememberMe = false;
-  bool _isOtpButtonDisabled = false;
 
   @override
   void dispose() {
@@ -34,36 +32,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _passwordController.dispose();
     _mobileController.dispose();
     _otpController.dispose();
-    _emailOtpController.dispose();
     super.dispose();
-  }
-
-  void _sendEmailOtp() async {
-    final email = _emailController.text.trim();
-    if (email.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter email first')),
-      );
-      return;
-    }
-
-    _emailOtpController.clear();
-    setState(() { _isOtpButtonDisabled = true; });
-    Future.delayed(const Duration(seconds: 30), () {
-      if (mounted) setState(() { _isOtpButtonDisabled = false; });
-    });
-
-    final success = await ref.read(authProvider.notifier).sendEmailOtp(email);
-    if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('OTP sent to your email')),
-      );
-    } else if (mounted) {
-      final error = ref.read(authProvider).error;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error ?? 'Failed to send OTP')),
-      );
-    }
   }
 
   void _handleLogin() async {
@@ -76,7 +45,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     final identifier = _isEmailLogin ? _emailController.text : _mobileController.text;
     final password = _isEmailLogin ? _passwordController.text : _otpController.text;
-    final emailOtp = _isEmailLogin ? _emailOtpController.text.trim() : null;
 
     if (identifier.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -85,24 +53,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
 
-    if (_isEmailLogin) {
-      if (emailOtp == null || emailOtp.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter the OTP')),
-        );
-        return;
-      }
-      if (emailOtp.length != 6) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid OTP format')),
-        );
-        return;
-      }
-      print("EMAIL: ${identifier.trim()}");
-      print("OTP: $emailOtp");
-    }
-
-    final success = await ref.read(authProvider.notifier).login(identifier.trim(), password, emailOtp: emailOtp);
+    final success = await ref.read(authProvider.notifier).login(identifier.trim(), password);
 
     if (success) {
       if (mounted) {
@@ -427,30 +378,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ],
             ),
           ),
-
-        if (ref.watch(authProvider).isLoading && _isOtpButtonDisabled) // Mocking a success banner for OTP sent
-           Container(
-            width: double.infinity,
-            margin: const EdgeInsets.only(bottom: 24),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFECFDF5),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFF6EE7B7)),
-            ),
-            child: const Row(
-              children: [
-                Icon(LucideIcons.checkCircle, color: Color(0xFF047857), size: 18),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    "OTP sent to your email",
-                    style: TextStyle(color: Color(0xFF047857), fontSize: 13, fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ],
-            ),
-          ),
         
         Container(
           height: 48,
@@ -516,60 +443,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           _buildLabel('Password'),
           const SizedBox(height: 8),
           _buildTextField('••••••••', isPassword: true, controller: _passwordController),
-          const SizedBox(height: 15),
-          _buildLabel('Email OTP'),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                flex: 2,
-                child: TextField(
-                  controller: _emailOtpController,
-                  keyboardType: TextInputType.number,
-                  maxLength: 6,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  decoration: InputDecoration(
-                    counterText: '',
-                    hintText: '6-digit OTP',
-                    hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
-                    filled: true,
-                    fillColor: const Color(0xFFF1F5F9),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 1,
-                child: SizedBox(
-                  height: 54,
-                  child: ElevatedButton(
-                    onPressed: (_isOtpButtonDisabled || ref.watch(authProvider).isLoading) ? null : _sendEmailOtp,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFFEDD5),
-                      foregroundColor: const Color(0xFFEA580C),
-                      padding: EdgeInsets.zero,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      elevation: 0,
-                    ),
-                    child: const Text('Send OTP', style: TextStyle(fontWeight: FontWeight.w700)),
-                  ),
-                ),
-              ),
-            ],
-          ),
           const SizedBox(height: 15),
           Wrap(
             alignment: WrapAlignment.spaceBetween,

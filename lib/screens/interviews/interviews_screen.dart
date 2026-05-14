@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../providers/navigation_provider.dart';
 import '../../theme/app_colors.dart';
+import '../../services/job_service.dart';
+import 'package:intl/intl.dart';
 
 class InterviewsScreen extends ConsumerStatefulWidget {
   const InterviewsScreen({super.key});
@@ -15,6 +17,28 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
   int _selectedTab = 0;
   String _selectedType = 'All Types';
   String _selectedSort = 'Latest First';
+
+  List<dynamic> _interviews = [];
+  Map<String, dynamic> _apiStats = {};
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchInterviews();
+  }
+
+  Future<void> _fetchInterviews() async {
+    setState(() {
+      _isLoading = true;
+    });
+    final result = await JobService.getEmployerInterviews();
+    setState(() {
+      _interviews = result['interviews'] ?? [];
+      _apiStats = result['stats'] ?? {};
+      _isLoading = false;
+    });
+  }
 
   final List<String> _tabs = ['All', 'Upcoming', 'Today', 'This Week', 'Completed', 'Declined'];
   
@@ -40,7 +64,12 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
             const SizedBox(height: 32),
             _buildTabAndFilters(isDesktop),
             const SizedBox(height: 32),
-            _buildEmptyState(),
+            if (_isLoading)
+              const Center(child: CircularProgressIndicator())
+            else if (_interviews.isEmpty)
+              _buildEmptyState()
+            else
+              _buildInterviewList(),
           ],
         ),
       ),
@@ -109,14 +138,66 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
     );
   }
 
+  int get totalInterviews => _interviews.length;
+  
+  int get scheduledInterviews {
+    return _interviews.where((i) {
+      final status = i['status']?.toString().toLowerCase() ?? '';
+      return status == 'upcoming' || status == 'scheduled' || status == 'live' || status == 'interviewing' || status == 'pending';
+    }).length;
+  }
+  
+  int get todayInterviews {
+    final now = DateTime.now();
+    return _interviews.where((i) {
+      final start = i['scheduled_start']?.toString() ?? '';
+      if (start.isEmpty) return false;
+      try {
+        final date = DateTime.parse(start);
+        return date.year == now.year && date.month == now.month && date.day == now.day;
+      } catch (e) {
+        return false;
+      }
+    }).length;
+  }
+
+  int get next7DaysInterviews {
+    final now = DateTime.now();
+    final nextWeek = now.add(const Duration(days: 7));
+    return _interviews.where((i) {
+      final start = i['scheduled_start']?.toString() ?? '';
+      if (start.isEmpty) return false;
+      try {
+        final date = DateTime.parse(start);
+        return date.isAfter(now) && date.isBefore(nextWeek);
+      } catch (e) {
+        return false;
+      }
+    }).length;
+  }
+
+  int get finishedInterviews {
+    return _interviews.where((i) {
+      final status = i['status']?.toString().toLowerCase() ?? '';
+      return status == 'completed' || status == 'done' || status == 'finished';
+    }).length;
+  }
+
+  int get declinedInterviews {
+    return _interviews.where((i) {
+      final status = i['status']?.toString().toLowerCase() ?? '';
+      return status == 'declined' || status == 'missed' || status == 'cancelled' || status == 'withdrawn';
+    }).length;
+  }
+
   Widget _buildStatsCards(bool isDesktop) {
     final stats = [
-      {'title': 'TOTAL', 'value': '0', 'subtitle': 'All time', 'icon': LucideIcons.barChart2, 'color': const Color(0xFF64748B)},
-      {'title': 'UPCOMING', 'value': '0', 'subtitle': 'Scheduled', 'icon': LucideIcons.calendar, 'color': const Color(0xFF6366F1)},
-      {'title': 'TODAY', 'value': '0', 'subtitle': 'Today', 'icon': LucideIcons.clock, 'color': const Color(0xFF3B82F6)},
-      {'title': 'WEEK', 'value': '0', 'subtitle': 'Next 7 days', 'icon': LucideIcons.calendarDays, 'color': const Color(0xFF8B5CF6)},
-      {'title': 'DONE', 'value': '0', 'subtitle': 'Finished', 'icon': LucideIcons.checkCircle, 'color': const Color(0xFF10B981)},
-      {'title': 'DECLINED', 'value': '0', 'subtitle': 'Missed', 'icon': LucideIcons.xCircle, 'color': const Color(0xFFEF4444)},
+      {'title': 'TOTAL', 'value': (_apiStats['total'] ?? totalInterviews).toString(), 'subtitle': 'All time', 'icon': LucideIcons.barChart2, 'color': const Color(0xFF64748B)},
+      {'title': 'UPCOMING', 'value': (_apiStats['upcoming'] ?? scheduledInterviews).toString(), 'subtitle': 'Scheduled', 'icon': LucideIcons.calendar, 'color': const Color(0xFF6366F1)},
+      {'title': 'TODAY', 'value': (_apiStats['today'] ?? todayInterviews).toString(), 'subtitle': 'Today', 'icon': LucideIcons.clock, 'color': const Color(0xFF3B82F6)},
+      {'title': 'WEEK', 'value': (_apiStats['week'] ?? next7DaysInterviews).toString(), 'subtitle': 'Next 7 days', 'icon': LucideIcons.calendarDays, 'color': const Color(0xFF8B5CF6)},
+      {'title': 'DONE', 'value': (_apiStats['completed'] ?? finishedInterviews).toString(), 'subtitle': 'Finished', 'icon': LucideIcons.checkCircle, 'color': const Color(0xFF10B981)},
+      {'title': 'DECLINED', 'value': (_apiStats['missed'] ?? declinedInterviews).toString(), 'subtitle': 'Missed', 'icon': LucideIcons.xCircle, 'color': const Color(0xFFEF4444)},
     ];
 
     return GridView.builder(
@@ -591,6 +672,176 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
           icon: const Icon(LucideIcons.chevronDown, size: 16, color: Color(0xFF64748B)),
         ),
       ),
+    );
+  }
+
+  Widget _buildInterviewList() {
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _interviews.length,
+      itemBuilder: (context, index) {
+        final interview = _interviews[index];
+        return _buildInterviewCard(interview);
+      },
+    );
+  }
+
+  Widget _buildInterviewCard(dynamic interview) {
+    final candidate = interview['candidate'] ?? {};
+    final job = interview['job'] ?? {};
+    
+    final candidateName = candidate['full_name'] ?? interview['candidate_name'] ?? 'Unknown Candidate';
+    final candidateImage = candidate['profile_image'] ?? candidate['avatar'] ?? interview['candidate_image'];
+    final jobTitle = job['title'] ?? interview['job_title'] ?? 'Unknown Job';
+    
+    final status = (interview['status']?.toString() ?? 'Pending').toUpperCase();
+    final interviewType = interview['interview_type']?.toString() ?? 'Online';
+    
+    // Format Date & Time properly
+    final String startStr = interview['scheduled_start']?.toString() ?? '';
+    final String endStr = interview['scheduled_end']?.toString() ?? '';
+    String formattedDateTime = 'TBD - TBD';
+    
+    if (startStr.isNotEmpty) {
+      try {
+        final startDate = DateTime.parse(startStr);
+        final datePart = DateFormat('MMM dd, yyyy').format(startDate);
+        final startTime = DateFormat('hh:mm a').format(startDate);
+        formattedDateTime = '$datePart | $startTime';
+        
+        if (endStr.isNotEmpty) {
+          final endDate = DateTime.parse(endStr);
+          final endTime = DateFormat('hh:mm a').format(endDate);
+          formattedDateTime += ' - $endTime';
+        }
+      } catch (e) {
+        formattedDateTime = '$startStr - $endStr';
+      }
+    }
+
+    final meetingLink = interview['meeting_link']?.toString() ?? '';
+    final bool isLive = status == 'LIVE' || status == 'INTERVIEWING';
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: const Color(0xFFF1F5F9),
+                backgroundImage: candidateImage != null && candidateImage.toString().isNotEmpty 
+                    ? NetworkImage(candidateImage.toString()) 
+                    : null,
+                child: candidateImage == null || candidateImage.toString().isEmpty
+                    ? const Icon(LucideIcons.user, color: Color(0xFF94A3B8))
+                    : null,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      candidateName,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1E293B)),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      jobTitle,
+                      style: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6366F1).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  status.toUpperCase(),
+                  style: const TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.bold, fontSize: 10),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildInfoRow(LucideIcons.video, 'Type', interviewType),
+          const SizedBox(height: 8),
+          _buildInfoRow(LucideIcons.calendar, 'Date & Time', formattedDateTime),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () {},
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    side: const BorderSide(color: Color(0xFFE2E8F0)),
+                  ),
+                  child: const Text('View Details', style: TextStyle(color: Color(0xFF475569), fontWeight: FontWeight.w600, fontSize: 13)),
+                ),
+              ),
+              if (meetingLink.isNotEmpty && isLive) ...[
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {},
+                    icon: const Icon(LucideIcons.video, size: 16),
+                    label: const Text('Join', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF6366F1),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      elevation: 0,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: const Color(0xFF94A3B8)),
+        const SizedBox(width: 8),
+        Text(
+          '$label: ',
+          style: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(color: Color(0xFF1E293B), fontSize: 13, fontWeight: FontWeight.w600),
+          ),
+        ),
+      ],
     );
   }
 }
