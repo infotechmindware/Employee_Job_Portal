@@ -100,7 +100,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       drawerScrimColor: Colors.black.withOpacity(0.3),
       drawer: !isDesktop 
         ? Drawer(
-            backgroundColor: Colors.white,
+            backgroundColor: Theme.of(context).cardColor,
             width: MediaQuery.of(context).size.width * 0.7,
             child: const Sidebar(showCloseButton: true),
           )
@@ -110,8 +110,9 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
             currentIndex: _getBottomNavIndex(activeIndex),
             onTap: _onBottomNavTap,
             type: BottomNavigationBarType.fixed,
+            backgroundColor: Theme.of(context).cardColor,
             selectedItemColor: AppColors.primary,
-            unselectedItemColor: AppColors.textSecondary,
+            unselectedItemColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
             showSelectedLabels: false,
             showUnselectedLabels: false,
             items: const [
@@ -153,7 +154,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
                 ),
                 Expanded(
                   child: Container(
-                    color: AppColors.background,
+                    color: Theme.of(context).scaffoldBackgroundColor,
                     child: IndexedStack(
                       index: _getStackIndex(activeIndex),
                       children: _screens,

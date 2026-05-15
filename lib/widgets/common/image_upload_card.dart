@@ -84,12 +84,14 @@ class _ImageUploadCardState extends State<ImageUploadCard> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
+      builder: (context) {
+        final theme = Theme.of(context);
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: theme.cardColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -102,12 +104,12 @@ class _ImageUploadCardState extends State<ImageUploadCard> {
               ),
             ),
             const SizedBox(height: 24),
-            const Text(
+            Text(
               'Select Image Source',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
-                color: Color(0xFF1E293B),
+                color: theme.colorScheme.onSurface,
               ),
             ),
             const SizedBox(height: 24),
@@ -143,15 +145,17 @@ class _ImageUploadCardState extends State<ImageUploadCard> {
             const SizedBox(height: 16),
           ],
         ),
-      ),
-    );
-  }
+      );
+    },
+  );
+}
 
   Widget _buildOptionItem({
     required IconData icon,
     required String label,
     required VoidCallback onTap,
   }) {
+    final theme = Theme.of(context);
     return GestureDetector(
       onTap: onTap,
       child: Column(
@@ -159,19 +163,19 @@ class _ImageUploadCardState extends State<ImageUploadCard> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
+              color: theme.dividerColor.withOpacity(0.05),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFF1F5F9)),
+              border: Border.all(color: theme.dividerColor.withOpacity(0.05)),
             ),
-            child: Icon(icon, color: const Color(0xFF6366F1), size: 28),
+            child: Icon(icon, color: theme.colorScheme.primary, size: 28),
           ),
           const SizedBox(height: 8),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF64748B),
+              color: theme.colorScheme.onSurface.withOpacity(0.6),
             ),
           ),
         ],
@@ -181,15 +185,16 @@ class _ImageUploadCardState extends State<ImageUploadCard> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           widget.label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w700,
-            color: Color(0xFF475569),
+            color: theme.colorScheme.onSurface.withOpacity(0.7),
           ),
         ),
         const SizedBox(height: 8),
@@ -199,13 +204,13 @@ class _ImageUploadCardState extends State<ImageUploadCard> {
             height: 140,
             width: double.infinity,
             decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
+              color: theme.brightness == Brightness.light ? theme.dividerColor.withOpacity(0.03) : theme.scaffoldBackgroundColor.withOpacity(0.5),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: _selectedImage != null
-                    ? const Color(0xFF6366F1).withOpacity(0.2)
-                    : const Color(0xFFE2E8F0),
-                style: _selectedImage != null ? BorderStyle.solid : BorderStyle.solid,
+                    ? theme.colorScheme.primary.withOpacity(0.2)
+                    : theme.dividerColor.withOpacity(0.1),
+                style: BorderStyle.solid,
               ),
             ),
             child: _isLoading
@@ -220,31 +225,32 @@ class _ImageUploadCardState extends State<ImageUploadCard> {
   }
 
   Widget _buildPlaceholder() {
+    final theme = Theme.of(context);
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFF6366F1).withOpacity(0.05),
+            color: theme.colorScheme.primary.withOpacity(0.05),
             shape: BoxShape.circle,
           ),
-          child: const Icon(LucideIcons.uploadCloud, size: 24, color: Color(0xFF6366F1)),
+          child: Icon(LucideIcons.uploadCloud, size: 24, color: theme.colorScheme.primary),
         ),
         const SizedBox(height: 12),
-        const Text(
+        Text(
           'Upload Image',
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w700,
-            color: Color(0xFF6366F1),
+            color: theme.colorScheme.primary,
           ),
         ),
         if (widget.subLabel != null) ...[
           const SizedBox(height: 4),
           Text(
             widget.subLabel!,
-            style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+            style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurface.withOpacity(0.4)),
           ),
         ],
       ],
@@ -355,7 +361,7 @@ class _ImageUploadCardState extends State<ImageUploadCard> {
         child: Icon(
           icon,
           size: 14,
-          color: isDestructive ? Colors.white : const Color(0xFF1E293B),
+          color: isDestructive ? Colors.white : Theme.of(context).colorScheme.onSurface,
         ),
       ),
     );

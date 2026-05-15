@@ -3,6 +3,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'candidate_details_screen.dart';
 import '../../providers/employer_jobs_provider.dart';
+import '../../theme/app_colors.dart';
 
 class CandidatesScreen extends ConsumerStatefulWidget {
   final String? jobId;
@@ -40,17 +41,17 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
     final stateAsync = ref.watch(employerJobsProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).cardColor,
         elevation: 0,
         leading: widget.jobId != null ? IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF1E293B), size: 20),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: Theme.of(context).colorScheme.onSurface, size: 20),
           onPressed: () => Navigator.pop(context),
         ) : null,
         title: Text(
           widget.jobId != null ? 'Job Applications' : 'All Candidates',
-          style: const TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.w800, fontSize: 18),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w800, fontSize: 18),
         ),
       ),
       body: stateAsync.when(
@@ -132,16 +133,16 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
               margin: const EdgeInsets.only(right: 12),
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               decoration: BoxDecoration(
-                color: isSelected ? const Color(0xFF6366F1) : Colors.white,
+                color: isSelected ? AppColors.primary : Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: isSelected ? const Color(0xFF6366F1) : const Color(0xFFE2E8F0)),
+                border: Border.all(color: isSelected ? AppColors.primary : Theme.of(context).dividerColor.withOpacity(0.1)),
               ),
               child: Row(
                 children: [
                   Text(
                     _tabsData[index],
                     style: TextStyle(
-                      color: isSelected ? Colors.white : const Color(0xFF64748B),
+                      color: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -149,14 +150,14 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: isSelected ? Colors.white.withOpacity(0.2) : const Color(0xFFF1F5F9),
+                      color: isSelected ? Colors.white.withOpacity(0.2) : Theme.of(context).dividerColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
                       count.toString(),
                       style: TextStyle(
                         fontSize: 12,
-                        color: isSelected ? Colors.white : const Color(0xFF1E293B),
+                        color: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurface,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -174,16 +175,16 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1)),
       ),
       child: TextField(
         onChanged: (val) => setState(() => _searchQuery = val),
-        decoration: const InputDecoration(
+        decoration: InputDecoration(
           hintText: 'Search by candidate name...',
-          hintStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
-          prefixIcon: Icon(LucideIcons.search, size: 18, color: Color(0xFF64748B)),
+          hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4), fontSize: 14),
+          prefixIcon: Icon(LucideIcons.search, size: 18, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
           border: InputBorder.none,
         ),
       ),
@@ -224,11 +225,11 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
         padding: const EdgeInsets.symmetric(vertical: 80),
         child: Column(
           children: [
-            const Icon(LucideIcons.users, size: 64, color: Color(0xFFCBD5E1)),
+            Icon(LucideIcons.users, size: 64, color: Theme.of(context).dividerColor.withOpacity(0.2)),
             const SizedBox(height: 16),
-            const Text('No candidates found', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            Text('No candidates found', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurface)),
             const SizedBox(height: 8),
-            Text('Try changing filters or search query', style: TextStyle(color: Colors.grey.shade500)),
+            Text('Try changing filters or search query', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5))),
           ],
         ),
       ),
@@ -252,12 +253,12 @@ class _CandidateCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFF1F5F9)),
-          boxShadow: [
+          border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.05)),
+          boxShadow: Theme.of(context).brightness == Brightness.light ? [
             BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
-          ],
+          ] : [],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -268,12 +269,12 @@ class _CandidateCard extends StatelessWidget {
                   tag: 'candidate_${app['id']}',
                   child: CircleAvatar(
                     radius: 24,
-                    backgroundColor: const Color(0xFFEEF2FF),
+                    backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
                     backgroundImage: app['candidate']?['profile_image'] != null 
                       ? NetworkImage("https://www.mindwareinfotech.com${app['candidate']['profile_image']}") 
                       : null,
                     child: app['candidate']?['profile_image'] == null 
-                      ? Text((app['candidate']?['full_name'] ?? 'C')[0].toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF6366F1))) 
+                      ? Text((app['candidate']?['full_name'] ?? 'C')[0].toUpperCase(), style: TextStyle(fontWeight: FontWeight.w900, color: AppColors.primary)) 
                       : null,
                   ),
                 ),
@@ -284,7 +285,7 @@ class _CandidateCard extends StatelessWidget {
                     children: [
                       Text(
                         app['candidate']?['full_name'] ?? app['candidate_name'] ?? 'Unknown',
-                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Color(0xFF1E293B)),
+                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Theme.of(context).colorScheme.onSurface),
                       ),
                       Text(
                         [
@@ -298,7 +299,7 @@ class _CandidateCard extends StatelessWidget {
                               app['candidate']?['state'],
                               app['candidate']?['country']
                             ].where((e) => e != null && e.toString().isNotEmpty).join(', '),
-                        style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                        style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -308,29 +309,29 @@ class _CandidateCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF0FDF4),
+                    color: Theme.of(context).brightness == Brightness.light ? const Color(0xFFF0FDF4) : const Color(0xFF064E3B),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     status,
-                    style: const TextStyle(color: Color(0xFF166534), fontSize: 10, fontWeight: FontWeight.w800),
+                    style: TextStyle(color: Theme.of(context).brightness == Brightness.light ? const Color(0xFF166534) : const Color(0xFF34D399), fontSize: 10, fontWeight: FontWeight.w800),
                   ),
                 ),
               ],
             ),
             const Spacer(),
-            const Divider(color: Color(0xFFF1F5F9)),
+            Divider(color: Theme.of(context).dividerColor.withOpacity(0.05)),
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   'Applied ${app['applied_at'] ?? 'Just now'}',
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                  style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4)),
                 ),
                 const Text(
                   'View Details →',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF6366F1)),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary),
                 ),
               ],
             ),

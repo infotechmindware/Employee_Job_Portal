@@ -52,44 +52,44 @@ class CandidateDetailsScreen extends ConsumerWidget {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).cardColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF1E293B), size: 20),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: Theme.of(context).colorScheme.onSurface, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Candidate Profile',
-          style: TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.w800, fontSize: 18),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w800, fontSize: 18),
         ),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
         child: Column(
           children: [
-            _buildHeader(name, jobTitle, status, imageUrl),
-            _buildAIMatchAnalysis(candidate, profile, job),
-            _buildActionButtons(mobile),
+            _buildHeader(name, jobTitle, status, imageUrl, context),
+            _buildAIMatchAnalysis(candidate, profile, job, context),
+            _buildActionButtons(mobile, context),
             _buildDetailSection('Basic Info', [
-              _buildInfoRow(LucideIcons.mail, 'Email', email),
-              _buildInfoRow(LucideIcons.phone, 'Phone', mobile),
-              _buildInfoRow(LucideIcons.mapPin, 'Location', location),
-              _buildInfoRow(LucideIcons.calendar, 'Applied on', _val(candidate['applied_at'])),
-            ]),
+              _buildInfoRow(LucideIcons.mail, 'Email', email, context),
+              _buildInfoRow(LucideIcons.phone, 'Phone', mobile, context),
+              _buildInfoRow(LucideIcons.mapPin, 'Location', location, context),
+              _buildInfoRow(LucideIcons.calendar, 'Applied on', _val(candidate['applied_at']), context),
+            ], context),
             _buildDetailSection('Experience & Education', [
-              _buildInfoRow(LucideIcons.briefcase, 'Total Experience', experience.toLowerCase().contains('year') || experience.toLowerCase().contains('month') ? experience : "$experience Years"),
-              _buildInfoRow(LucideIcons.graduationCap, 'Education', education),
-              _buildInfoRow(LucideIcons.indianRupee, 'Expected Salary', '₹$expectedSalary'),
-            ]),
+              _buildInfoRow(LucideIcons.briefcase, 'Total Experience', experience.toLowerCase().contains('year') || experience.toLowerCase().contains('month') ? experience : "$experience Years", context),
+              _buildInfoRow(LucideIcons.graduationCap, 'Education', education, context),
+              _buildInfoRow(LucideIcons.indianRupee, 'Expected Salary', '₹$expectedSalary', context),
+            ], context),
             _buildDetailSection('Skills', [
-              _buildSkillsChips(candidate['skills_data'] ?? profile['skills'] ?? []),
-            ]),
+              _buildSkillsChips(candidate['skills_data'] ?? profile['skills'] ?? [], context),
+            ], context),
             if (candidate['resume_url'] != null)
               _buildDetailSection('Resume', [
-                _buildResumeAction(candidate['resume_url']),
-              ]),
+                _buildResumeAction(candidate['resume_url'], context),
+              ], context),
             const SizedBox(height: 100),
           ],
         ),
@@ -98,10 +98,10 @@ class CandidateDetailsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeader(String name, String jobTitle, String status, String? imageUrl) {
+  Widget _buildHeader(String name, String jobTitle, String status, String? imageUrl, BuildContext context) {
     return Container(
       width: double.infinity,
-      color: Colors.white,
+      color: Theme.of(context).cardColor,
       padding: const EdgeInsets.all(24),
       child: Column(
         children: [
@@ -114,17 +114,17 @@ class CandidateDetailsScreen extends ConsumerWidget {
                     imageUrl: imageUrl,
                     fit: BoxFit.cover,
                     placeholder: (context, url) => Container(
-                      color: const Color(0xFFEEF2FF),
-                      child: const Center(child: CircularProgressIndicator(strokeWidth: 3, color: Color(0xFF6366F1))),
+                      color: Theme.of(context).primaryColor.withOpacity(0.05),
+                      child: Center(child: CircularProgressIndicator(strokeWidth: 3, color: Theme.of(context).primaryColor)),
                     ),
                     errorWidget: (context, url, error) => Container(
-                      color: const Color(0xFFEEF2FF),
-                      child: Center(child: Text(name[0].toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF6366F1), fontSize: 32))),
+                      color: Theme.of(context).primaryColor.withOpacity(0.05),
+                      child: Center(child: Text(name[0].toUpperCase(), style: TextStyle(fontWeight: FontWeight.w900, color: Theme.of(context).primaryColor, fontSize: 32))),
                     ),
                   )
                 : Container(
-                    color: const Color(0xFFEEF2FF),
-                    child: Center(child: Text(name[0].toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF6366F1), fontSize: 32))),
+                    color: Theme.of(context).primaryColor.withOpacity(0.05),
+                    child: Center(child: Text(name[0].toUpperCase(), style: TextStyle(fontWeight: FontWeight.w900, color: Theme.of(context).primaryColor, fontSize: 32))),
                   ),
             ),
           ),
@@ -132,24 +132,24 @@ class CandidateDetailsScreen extends ConsumerWidget {
           Text(
             name,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF1E293B)),
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Theme.of(context).colorScheme.onSurface),
           ),
           const SizedBox(height: 4),
           Text(
             jobTitle,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 15, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+            style: TextStyle(fontSize: 15, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6), fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
-              color: const Color(0xFFF0FDF4),
+              color: Theme.of(context).brightness == Brightness.light ? const Color(0xFFF0FDF4) : const Color(0xFF064E3B),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
               status.toUpperCase(),
-              style: const TextStyle(color: Color(0xFF166534), fontSize: 11, fontWeight: FontWeight.w800),
+              style: TextStyle(color: Theme.of(context).brightness == Brightness.light ? const Color(0xFF166534) : const Color(0xFF34D399), fontSize: 11, fontWeight: FontWeight.w800),
             ),
           ),
         ],
@@ -157,7 +157,7 @@ class CandidateDetailsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildAIMatchAnalysis(Map<String, dynamic> candidate, Map<String, dynamic> profile, Map<String, dynamic> job) {
+  Widget _buildAIMatchAnalysis(Map<String, dynamic> candidate, Map<String, dynamic> profile, Map<String, dynamic> job, BuildContext context) {
     // 1. Skills Match Logic
     final candSkills = (candidate['skills_data'] ?? profile['skills'] ?? []) as List;
     final jobSkills = (job['skills'] ?? []) as List;
@@ -183,38 +183,40 @@ class CandidateDetailsScreen extends ConsumerWidget {
     // 4. Overall Match
     double overallMatch = (skillsMatch + expMatch + eduMatch) / 3;
 
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF7ED), // Light orange background
+        color: isDark ? theme.scaffoldBackgroundColor.withOpacity(0.5) : const Color(0xFFFFF7ED),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFFFEDD5)), // Orange border
-        boxShadow: [
+        border: Border.all(color: isDark ? theme.dividerColor.withOpacity(0.1) : const Color(0xFFFFEDD5)),
+        boxShadow: !isDark ? [
           BoxShadow(color: const Color(0xFFF97316).withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
-        ],
+        ] : [],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'AI Match Analysis',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF9A3412)), // Deep orange text
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Theme.of(context).brightness == Brightness.light ? const Color(0xFF9A3412) : const Color(0xFFFDBA74)),
           ),
           const SizedBox(height: 24),
           Row(
             children: [
-              Expanded(child: _buildProgressItem('Overall', overallMatch)),
+              Expanded(child: _buildProgressItem('Overall', overallMatch, context)),
               const SizedBox(width: 32),
-              Expanded(child: _buildProgressItem('Skills', skillsMatch)),
+              Expanded(child: _buildProgressItem('Skills', skillsMatch, context)),
             ],
           ),
           const SizedBox(height: 24),
           Row(
             children: [
-              Expanded(child: _buildProgressItem('Experience', expMatch)),
+              Expanded(child: _buildProgressItem('Experience', expMatch, context)),
               const SizedBox(width: 32),
-              Expanded(child: _buildProgressItem('Education', eduMatch)),
+              Expanded(child: _buildProgressItem('Education', eduMatch, context)),
             ],
           ),
         ],
@@ -222,15 +224,15 @@ class CandidateDetailsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildProgressItem(String label, double value) {
+  Widget _buildProgressItem(String label, double value, BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: const TextStyle(fontSize: 13, color: Color(0xFF9A3412), fontWeight: FontWeight.w600)),
-            Text('${(value * 100).toInt()}%', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFFC2410C))),
+            Text(label, style: TextStyle(fontSize: 13, color: Theme.of(context).brightness == Brightness.light ? const Color(0xFF9A3412) : const Color(0xFFFDBA74).withOpacity(0.7), fontWeight: FontWeight.w600)),
+            Text('${(value * 100).toInt()}%', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Theme.of(context).brightness == Brightness.light ? const Color(0xFFC2410C) : const Color(0xFFFDBA74))),
           ],
         ),
         const SizedBox(height: 10),
@@ -239,7 +241,7 @@ class CandidateDetailsScreen extends ConsumerWidget {
           child: LinearProgressIndicator(
             value: value,
             minHeight: 8,
-            backgroundColor: Colors.white,
+            backgroundColor: Theme.of(context).dividerColor.withOpacity(0.1),
             valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFF97316)), // Vibrant orange
           ),
         ),
@@ -247,9 +249,9 @@ class CandidateDetailsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildActionButtons(String? phone) {
+  Widget _buildActionButtons(String? phone, BuildContext context) {
     return Container(
-      color: Colors.white,
+      color: Theme.of(context).cardColor,
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
       child: Row(
         children: [
@@ -274,7 +276,7 @@ class CandidateDetailsScreen extends ConsumerWidget {
               icon: const Icon(LucideIcons.phoneCall, size: 18),
               label: const Text('Call'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF6366F1),
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -287,18 +289,18 @@ class CandidateDetailsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildDetailSection(String title, List<Widget> children) {
+  Widget _buildDetailSection(String title, List<Widget> children, BuildContext context) {
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(top: 12),
       padding: const EdgeInsets.all(24),
-      color: Colors.white,
+      color: Theme.of(context).cardColor,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Theme.of(context).colorScheme.onSurface),
           ),
           const SizedBox(height: 20),
           ...children,
@@ -307,7 +309,7 @@ class CandidateDetailsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value) {
+  Widget _buildInfoRow(IconData icon, String label, String value, BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
@@ -316,19 +318,19 @@ class CandidateDetailsScreen extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
+              color: Theme.of(context).dividerColor.withOpacity(0.05),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, size: 16, color: const Color(0xFF64748B)),
+            child: Icon(icon, size: 16, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8), fontWeight: FontWeight.w600)),
+                Text(label, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4), fontWeight: FontWeight.w600)),
                 const SizedBox(height: 2),
-                Text(value, style: const TextStyle(fontSize: 14, color: Color(0xFF334155), fontWeight: FontWeight.w700)),
+                Text(value, style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8), fontWeight: FontWeight.w700)),
               ],
             ),
           ),
@@ -337,7 +339,7 @@ class CandidateDetailsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSkillsChips(dynamic skills) {
+  Widget _buildSkillsChips(dynamic skills, BuildContext context) {
     List<String> skillList = [];
     if (skills is List) {
       skillList = skills.map((e) {
@@ -355,7 +357,7 @@ class CandidateDetailsScreen extends ConsumerWidget {
       }
     }
 
-    if (skillList.isEmpty) return const Text('No skills listed', style: TextStyle(color: Color(0xFF94A3B8)));
+    if (skillList.isEmpty) return Text('No skills listed', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4)));
 
     return Wrap(
       spacing: 8,
@@ -363,24 +365,24 @@ class CandidateDetailsScreen extends ConsumerWidget {
       children: skillList.map((skill) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: const Color(0xFFF1F5F9),
+          color: Theme.of(context).dividerColor.withOpacity(0.05),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text(
           skill,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
         ),
       )).toList(),
     );
   }
 
-  Widget _buildResumeAction(String url) {
+  Widget _buildResumeAction(String url, BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: Theme.of(context).scaffoldBackgroundColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1)),
       ),
       child: Row(
         children: [
@@ -394,7 +396,7 @@ class CandidateDetailsScreen extends ConsumerWidget {
           ),
           IconButton(
             onPressed: () => _launchURL(url),
-            icon: const Icon(LucideIcons.download, size: 20, color: Color(0xFF6366F1)),
+            icon: const Icon(LucideIcons.download, size: 20, color: AppColors.primary),
           ),
         ],
       ),
@@ -407,10 +409,10 @@ class CandidateDetailsScreen extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
+        color: Theme.of(context).cardColor,
+        boxShadow: Theme.of(context).brightness == Brightness.light ? [
           BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5)),
-        ],
+        ] : [],
       ),
       child: Row(
         children: [
@@ -442,7 +444,7 @@ class CandidateDetailsScreen extends ConsumerWidget {
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF10B981),
+                backgroundColor: Theme.of(context).brightness == Brightness.light ? const Color(0xFF10B981) : const Color(0xFF059669),
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

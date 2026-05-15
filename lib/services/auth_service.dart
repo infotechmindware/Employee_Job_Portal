@@ -287,7 +287,21 @@ class AuthService {
 
   Future<Map<String, dynamic>> getProfile() async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Try to return cached profile first for instant UI
+      final cachedProfile = prefs.getString('user_profile');
+      if (cachedProfile != null) {
+        try {
+          final decoded = jsonDecode(cachedProfile);
+          // Return cached data but still fetch fresh in background if needed
+          // For now, we return it to satisfy the immediate UI need
+          return {'success': true, 'data': decoded, 'from_cache': true};
+        } catch (_) {}
+      }
+
       final token = await getToken();
+      if (token == null) return {'success': false, 'message': 'Not authenticated'};
       
       final getResponse = await http.get(
         Uri.parse('$baseUrl/employer/profile'),
@@ -295,12 +309,15 @@ class AuthService {
           'Accept': 'application/json',
           'Authorization': 'Bearer $token',
         },
-      );
+      ).timeout(const Duration(seconds: 5));
 
       if (getResponse.body.startsWith('{')) {
         final data = jsonDecode(getResponse.body);
         if (getResponse.statusCode == 200) {
-          return {'success': true, 'data': data['data'] ?? data};
+          final profileData = data['data'] ?? data;
+          // Save to cache
+          await prefs.setString('user_profile', jsonEncode(profileData));
+          return {'success': true, 'data': profileData};
         } else {
           return {'success': false, 'message': data['message'] ?? 'Failed to fetch profile'};
         }

@@ -144,7 +144,7 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
     final isDesktop = screenWidth > 1024;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
           SingleChildScrollView(
@@ -153,11 +153,11 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildHeader(isDesktop),
+                _buildHeader(isDesktop, context),
                 const SizedBox(height: 24),
-                _buildSuccessAlert(),
+                _buildSuccessAlert(context),
                 const SizedBox(height: 32),
-                _buildStepper(currentStep, isDesktop),
+                _buildStepper(currentStep, isDesktop, context),
                 const SizedBox(height: 32),
                 _buildStepContent(currentStep, isDesktop),
                 const SizedBox(height: 40),
@@ -175,8 +175,9 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
     );
   }
 
-  Widget _buildHeader(bool isDesktop) {
-    return const Column(
+  Widget _buildHeader(bool isDesktop, BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
@@ -184,16 +185,16 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
           style: TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.w800,
-            color: Color(0xFF1E293B),
+            color: theme.colorScheme.onSurface,
             letterSpacing: -1,
           ),
         ),
-        SizedBox(height: 4),
+        const SizedBox(height: 4),
         Text(
           'Complete your business profile to start hiring',
           style: TextStyle(
             fontSize: 14,
-            color: Color(0xFF64748B),
+            color: theme.colorScheme.onSurface.withOpacity(0.6),
             fontWeight: FontWeight.w400,
           ),
         ),
@@ -201,22 +202,24 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
     );
   }
 
-  Widget _buildSuccessAlert() {
+  Widget _buildSuccessAlert(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF0FDF4),
+        color: isDark ? const Color(0xFF065F46).withOpacity(0.2) : const Color(0xFFF0FDF4),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFDCFCE7)),
+        border: Border.all(color: isDark ? const Color(0xFF059669).withOpacity(0.3) : const Color(0xFFDCFCE7)),
       ),
-      child: const Row(
+      child: Row(
         children: [
-          Icon(LucideIcons.checkCircle, size: 18, color: Color(0xFF16A34A)),
-          SizedBox(width: 12),
+          Icon(LucideIcons.checkCircle, size: 18, color: isDark ? const Color(0xFF34D399) : const Color(0xFF16A34A)),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               'Profile completed successfully. Your account is under review.',
-              style: TextStyle(color: Color(0xFF15803D), fontSize: 13, fontWeight: FontWeight.w600),
+              style: TextStyle(color: isDark ? const Color(0xFF34D399) : const Color(0xFF15803D), fontSize: 13, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -224,30 +227,32 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
     );
   }
 
-  Widget _buildStepper(int currentStep, bool isDesktop) {
+  Widget _buildStepper(int currentStep, bool isDesktop, BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
-        ],
+        border: Border.all(color: theme.dividerColor.withOpacity(0.05)),
+        boxShadow: theme.brightness == Brightness.light ? [
+          BoxShadow(color: theme.colorScheme.onSurface.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
+        ] : [],
       ),
       child: Row(
         children: [
-          _buildStepPill(1, 'Basic', currentStep >= 0, currentStep == 0),
-          _buildStepConnector(currentStep >= 1),
-          _buildStepPill(2, 'Contact', currentStep >= 1, currentStep == 1),
-          _buildStepConnector(currentStep >= 2),
-          _buildStepPill(3, 'Docs', currentStep >= 2, currentStep == 2),
+          _buildStepPill(1, 'Basic', currentStep >= 0, currentStep == 0, context),
+          _buildStepConnector(currentStep >= 1, context),
+          _buildStepPill(2, 'Contact', currentStep >= 1, currentStep == 1, context),
+          _buildStepConnector(currentStep >= 2, context),
+          _buildStepPill(3, 'Docs', currentStep >= 2, currentStep == 2, context),
         ],
       ),
     );
   }
 
-  Widget _buildStepPill(int num, String label, bool isDone, bool isActive) {
+  Widget _buildStepPill(int num, String label, bool isDone, bool isActive, BuildContext context) {
+    final theme = Theme.of(context);
     return Expanded(
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -257,9 +262,9 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
             height: 28,
             decoration: BoxDecoration(
               gradient: isDone || isActive
-                  ? const LinearGradient(colors: [Color(0xFF6366F1), Color(0xFF4F46E5)])
+                  ? const LinearGradient(colors: [AppColors.primary, Color(0xFF4F46E5)])
                   : null,
-              color: isDone || isActive ? null : const Color(0xFFF1F5F9),
+              color: isDone || isActive ? null : theme.dividerColor.withOpacity(0.05),
               shape: BoxShape.circle,
             ),
             child: Center(
@@ -268,7 +273,7 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
                   : Text(
                       '$num',
                       style: TextStyle(
-                        color: isDone || isActive ? Colors.white : const Color(0xFF94A3B8),
+                        color: isDone || isActive ? Colors.white : theme.colorScheme.onSurface.withOpacity(0.4),
                         fontWeight: FontWeight.w800,
                         fontSize: 12,
                       ),
@@ -282,7 +287,7 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
-                color: isActive ? const Color(0xFF1E293B) : const Color(0xFF94A3B8),
+                color: isActive ? theme.colorScheme.onSurface : theme.colorScheme.onSurface.withOpacity(0.4),
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -293,13 +298,13 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
     );
   }
 
-  Widget _buildStepConnector(bool active) {
+  Widget _buildStepConnector(bool active, BuildContext context) {
     return Container(
       width: 24,
       height: 2,
       margin: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
-        color: active ? const Color(0xFF6366F1) : const Color(0xFFF1F5F9),
+        color: active ? AppColors.primary : Theme.of(context).dividerColor.withOpacity(0.1),
         borderRadius: BorderRadius.circular(2),
       ),
     );
@@ -378,22 +383,32 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Country *', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF475569))),
+            const Text('Country *', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary)),
             const SizedBox(height: 8),
             DropdownSearch<String>(
               items: (filter, loadProps) => _countryData.entries.map((e) => "${e.key} ${e.value}").toList(),
               decoratorProps: DropDownDecoratorProps(
+                baseStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                 decoration: InputDecoration(
                   hintText: 'Select country',
+                  hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4)),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   filled: true,
-                  fillColor: const Color(0xFFF8FAFC),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                  fillColor: Theme.of(context).brightness == Brightness.light ? Theme.of(context).dividerColor.withOpacity(0.03) : Theme.of(context).scaffoldBackgroundColor.withOpacity(0.5),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Theme.of(context).dividerColor.withOpacity(0.1))),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Theme.of(context).dividerColor.withOpacity(0.1))),
                 ),
               ),
               popupProps: PopupProps.menu(
                 showSearchBox: true,
+                menuProps: MenuProps(backgroundColor: Theme.of(context).cardColor),
+                searchFieldProps: TextFieldProps(
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                  decoration: InputDecoration(
+                    hintText: "Search Country...",
+                    hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4)),
+                  ),
+                ),
                 itemBuilder: (ctx, item, isSelected, isHover) {
                   final code = item.split(' ')[0].toLowerCase();
                   return ListTile(
@@ -402,7 +417,7 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
                       width: 24,
                       errorBuilder: (context, error, stackTrace) => const Icon(Icons.flag, size: 24),
                     ),
-                    title: Text(item),
+                    title: Text(item, style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
                   );
                 },
               ),
@@ -428,21 +443,30 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('State *', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF475569))),
+              const Text('State *', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary)),
               const SizedBox(height: 8),
               DropdownSearch<String>(
                 items: (filter, loadProps) => _selectedCountry == 'India' ? (List<String>.from(LocationData.indiaStatesAndDistricts.keys)..sort()) : [],
                 decoratorProps: DropDownDecoratorProps(
+                  baseStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   decoration: InputDecoration(
                     hintText: 'Select state',
+                    hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4)),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     filled: true,
-                    fillColor: const Color(0xFFF8FAFC),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                    fillColor: Theme.of(context).brightness == Brightness.light ? Theme.of(context).dividerColor.withOpacity(0.03) : Theme.of(context).scaffoldBackgroundColor.withOpacity(0.5),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Theme.of(context).dividerColor.withOpacity(0.1))),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Theme.of(context).dividerColor.withOpacity(0.1))),
                   ),
                 ),
-                popupProps: const PopupProps.menu(showSearchBox: true),
+                popupProps: PopupProps.menu(
+                  showSearchBox: true,
+                  menuProps: MenuProps(backgroundColor: Theme.of(context).cardColor),
+                  searchFieldProps: TextFieldProps(
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                  ),
+                  itemBuilder: (context, item, isSelected, isHover) => ListTile(title: Text(item, style: TextStyle(color: Theme.of(context).colorScheme.onSurface))),
+                ),
                 selectedItem: _selectedState,
                 onSelected: (val) {
                   setState(() {
@@ -458,21 +482,30 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('City *', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF475569))),
+              const Text('City *', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary)),
               const SizedBox(height: 8),
               DropdownSearch<String>(
                 items: (filter, loadProps) => _selectedState != null ? (List<String>.from(LocationData.indiaStatesAndDistricts[_selectedState]!)..sort()) : [],
                 decoratorProps: DropDownDecoratorProps(
+                  baseStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   decoration: InputDecoration(
                     hintText: 'Select city',
+                    hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4)),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     filled: true,
-                    fillColor: const Color(0xFFF8FAFC),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                    fillColor: Theme.of(context).brightness == Brightness.light ? Theme.of(context).dividerColor.withOpacity(0.03) : Theme.of(context).scaffoldBackgroundColor.withOpacity(0.5),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Theme.of(context).dividerColor.withOpacity(0.1))),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Theme.of(context).dividerColor.withOpacity(0.1))),
                   ),
                 ),
-                popupProps: const PopupProps.menu(showSearchBox: true),
+                popupProps: PopupProps.menu(
+                  showSearchBox: true,
+                  menuProps: MenuProps(backgroundColor: Theme.of(context).cardColor),
+                  searchFieldProps: TextFieldProps(
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                  ),
+                  itemBuilder: (context, item, isSelected, isHover) => ListTile(title: Text(item, style: TextStyle(color: Theme.of(context).colorScheme.onSurface))),
+                ),
                 selectedItem: _selectedCity,
                 onSelected: (val) {
                   setState(() => _selectedCity = val);
@@ -508,9 +541,9 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
             label: Text(_isLocating ? 'Locating...' : 'Use my location'),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              side: const BorderSide(color: Color(0xFFE2E8F0)),
+              side: BorderSide(color: Theme.of(context).dividerColor.withOpacity(0.1)),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              foregroundColor: const Color(0xFF6366F1),
+              foregroundColor: AppColors.primary,
             ),
           ),
         ),
@@ -519,9 +552,9 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
           height: 250,
           width: double.infinity,
           decoration: BoxDecoration(
-            color: const Color(0xFFF1F5F9),
+            color: Theme.of(context).dividerColor.withOpacity(0.05),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
+            border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1)),
           ),
           clipBehavior: Clip.antiAlias,
           child: Stack(
@@ -852,28 +885,37 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
     );
   }
 
-  Widget _buildFormCard({required String title, required IconData icon, required List<Widget> children}) {
+  Widget _buildFormCard({
+    required String title,
+    required IconData icon,
+    required List<Widget> children,
+    Widget? headerAction,
+  }) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 15, offset: const Offset(0, 8)),
-        ],
+        border: Border.all(color: theme.dividerColor.withOpacity(0.05)),
+        boxShadow: theme.brightness == Brightness.light ? [
+          BoxShadow(color: theme.colorScheme.onSurface.withOpacity(0.02), blurRadius: 15, offset: const Offset(0, 8)),
+        ] : [],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, size: 20, color: const Color(0xFF6366F1)),
+              Icon(icon, size: 20, color: AppColors.primary),
               const SizedBox(width: 12),
-              Text(
-                title,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface),
+                ),
               ),
+              if (headerAction != null) headerAction,
             ],
           ),
           const SizedBox(height: 24),
@@ -884,32 +926,34 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
   }
 
   Widget _buildField(String label, String hint, {int maxLines = 1, TextEditingController? controller, ValueChanged<String>? onChanged}) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF475569))),
+        Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: theme.colorScheme.onSurface.withOpacity(0.7))),
         const SizedBox(height: 8),
         TextField(
           controller: controller,
           maxLines: maxLines,
           onChanged: onChanged,
+          style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 14),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+            hintStyle: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.4), fontSize: 14),
             contentPadding: const EdgeInsets.all(16),
             filled: true,
-            fillColor: const Color(0xFFF8FAFC),
+            fillColor: theme.brightness == Brightness.light ? theme.dividerColor.withOpacity(0.03) : theme.scaffoldBackgroundColor.withOpacity(0.5),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+              borderSide: BorderSide(color: theme.dividerColor.withOpacity(0.1)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+              borderSide: BorderSide(color: theme.dividerColor.withOpacity(0.1)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
+              borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
             ),
           ),
         ),
@@ -918,31 +962,32 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
   }
 
   Widget _buildDropdown(String label, String? value, String placeholder, List<String> items, ValueChanged<String?> onChanged) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w700,
-            color: Color(0xFF1E293B), // Darker text as per "app text"
+            color: theme.colorScheme.onSurface.withOpacity(0.7),
             letterSpacing: 0.2,
           ),
         ),
         const SizedBox(height: 10),
         Container(
           decoration: BoxDecoration(
-            color: Colors.white, // Better white background
-            borderRadius: BorderRadius.circular(12), // Matching app field radius
-            border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5), // Cleaner border
-            boxShadow: [
+            color: theme.cardColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: theme.dividerColor.withOpacity(0.1), width: 1.5),
+            boxShadow: theme.brightness == Brightness.light ? [
               BoxShadow(
-                color: const Color(0xFF64748B).withOpacity(0.05),
+                color: theme.colorScheme.onSurface.withOpacity(0.05),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
-            ],
+            ] : [],
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
@@ -950,21 +995,20 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
               isExpanded: true,
               hint: Text(
                 placeholder,
-                style: const TextStyle(fontSize: 14, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),
+                style: TextStyle(fontSize: 14, color: theme.colorScheme.onSurface.withOpacity(0.4), fontWeight: FontWeight.w500),
               ),
               icon: Container(
                 margin: const EdgeInsets.only(right: 8),
-                child: const Icon(LucideIcons.chevronDown, size: 18, color: Color(0xFF64748B)),
+                child: Icon(LucideIcons.chevronDown, size: 18, color: theme.colorScheme.onSurface.withOpacity(0.4)),
               ),
-              dropdownColor: Colors.white,
+              dropdownColor: theme.cardColor,
               borderRadius: BorderRadius.circular(12),
               elevation: 8,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
-                color: Color(0xFF1E293B),
+                color: theme.colorScheme.onSurface,
                 fontWeight: FontWeight.w600,
-                fontFamily: 'Inter',
               ),
               items: items.map((v) => DropdownMenuItem(
                 value: v,
@@ -972,9 +1016,9 @@ class _ProfileStepperScreenState extends ConsumerState<ProfileStepperScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   child: Text(
                     v,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
-                      color: Color(0xFF1E293B),
+                      color: theme.colorScheme.onSurface,
                       fontWeight: FontWeight.w500,
                     ),
                   ),

@@ -26,10 +26,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final isTablet = size.width > 700;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: RefreshIndicator(
         onRefresh: () => ref.refresh(dashboardDataProvider.future),
-        color: const Color(0xFF6366F1),
+        color: AppColors.primary,
         child: dashboardAsync.when(
           loading: () => _buildSkeletonLoading(isDesktop, isTablet),
           error: (err, stack) => _buildErrorState(err),
@@ -69,16 +69,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   Widget _buildSkeletonBox({double? width, double? height, double borderRadius = 12}) {
+    final theme = Theme.of(context);
     return Container(
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(borderRadius),
       ),
       child: LinearProgressIndicator(
-        backgroundColor: Colors.grey[100],
-        color: Colors.grey[200],
+        backgroundColor: theme.dividerColor.withOpacity(0.05),
+        color: theme.dividerColor.withOpacity(0.1),
       ),
     );
   }
@@ -88,9 +89,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(LucideIcons.alertCircle, size: 48, color: Colors.redAccent),
+          Icon(LucideIcons.alertCircle, size: 48, color: Theme.of(context).colorScheme.error),
           const SizedBox(height: 16),
-          Text('Failed to load dashboard data', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.grey[800])),
+          Text('Failed to load dashboard data', style: TextStyle(fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurface)),
           const SizedBox(height: 16),
           ElevatedButton(
             onPressed: () => ref.refresh(dashboardDataProvider),
@@ -197,17 +198,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   Widget _buildModernHeader() {
-    return const Column(
+    final theme = Theme.of(context);
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Dashboard Overview',
-          style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Color(0xFF0F172A), letterSpacing: -1.0),
+          style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: theme.colorScheme.onSurface, letterSpacing: -1.0),
         ),
-        SizedBox(height: 6),
+        const SizedBox(height: 6),
         Text(
           'Welcome back! Here is a summary of your platform activity.',
-          style: TextStyle(fontSize: 15, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+          style: TextStyle(fontSize: 15, color: theme.colorScheme.onSurface.withOpacity(0.6), fontWeight: FontWeight.w500),
         ),
       ],
     );
@@ -235,12 +237,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   Widget _buildRecentJobsSection(List<dynamic> jobs) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 4))],
+        border: Border.all(color: theme.dividerColor.withOpacity(0.05)),
+        boxShadow: theme.brightness == Brightness.light 
+            ? [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 4))]
+            : [],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -248,22 +254,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Row(
+              Row(
                 children: [
-                  Icon(LucideIcons.briefcase, size: 20, color: Color(0xFF6366F1)),
-                  SizedBox(width: 12),
-                  Text('Recent Jobs', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
+                  const Icon(LucideIcons.briefcase, size: 20, color: AppColors.primary),
+                  const SizedBox(width: 12),
+                  Text('Recent Jobs', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Theme.of(context).colorScheme.onSurface)),
                 ],
               ),
               TextButton(
                 onPressed: () => ref.read(navigationProvider.notifier).setIndex(1),
-                child: const Text('View all', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF6366F1))),
+                child: const Text('View all', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary)),
               ),
             ],
           ),
           const SizedBox(height: 24),
           if (jobs.isEmpty)
-            const Center(child: Padding(padding: EdgeInsets.all(40), child: Text('No jobs posted yet', style: TextStyle(color: Colors.grey))))
+            Center(child: Padding(padding: const EdgeInsets.all(40), child: Text('No jobs posted yet', style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.4)))))
           else
             ...jobs.map((j) => _buildJobItem(j)).toList(),
         ],
@@ -273,15 +279,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   Widget _buildJobItem(Map<String, dynamic> job) {
     final status = job['status']?.toString().toLowerCase() ?? 'published';
-    final statusColor = status == 'published' ? const Color(0xFF10B981) : Colors.grey;
+    final statusColor = status == 'published' ? const Color(0xFF10B981) : Theme.of(context).colorScheme.onSurface.withOpacity(0.4);
     
+    final theme = Theme.of(context);
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: theme.brightness == Brightness.light ? const Color(0xFFF8FAFC) : theme.scaffoldBackgroundColor.withOpacity(0.5),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: theme.dividerColor.withOpacity(0.05)),
       ),
       child: Row(
         children: [
@@ -289,7 +296,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(job['title'] ?? 'Job Title', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Color(0xFF1E293B))),
+                Text(job['title'] ?? 'Job Title', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: theme.colorScheme.onSurface)),
                 const SizedBox(height: 8),
                 Wrap(
                   crossAxisAlignment: WrapCrossAlignment.center,
@@ -299,22 +306,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     Text.rich(
                       TextSpan(
                         children: [
-                          const WidgetSpan(child: Icon(LucideIcons.users, size: 14, color: Colors.grey), alignment: PlaceholderAlignment.middle),
+                          WidgetSpan(child: Icon(LucideIcons.users, size: 14, color: theme.colorScheme.onSurface.withOpacity(0.4)), alignment: PlaceholderAlignment.middle),
                           const WidgetSpan(child: SizedBox(width: 6)),
                           TextSpan(text: '${job['applications_count'] ?? 0} applications'),
                         ],
                       ),
-                      style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w500),
+                      style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withOpacity(0.4), fontWeight: FontWeight.w500),
                     ),
                     Text.rich(
                       TextSpan(
                         children: [
-                          const WidgetSpan(child: Icon(LucideIcons.mapPin, size: 14, color: Colors.grey), alignment: PlaceholderAlignment.middle),
+                          WidgetSpan(child: Icon(LucideIcons.mapPin, size: 14, color: theme.colorScheme.onSurface.withOpacity(0.4)), alignment: PlaceholderAlignment.middle),
                           const WidgetSpan(child: SizedBox(width: 4)),
                           TextSpan(text: job['location'] ?? 'Remote'),
                         ],
                       ),
-                      style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w500),
+                      style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withOpacity(0.4), fontWeight: FontWeight.w500),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -352,16 +359,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   Widget _buildActionCard(String title, IconData icon, Color color, VoidCallback onTap) {
+    final theme = Theme.of(context);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(24),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: theme.cardColor,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: const Color(0xFFF1F5F9)),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
+          border: Border.all(color: theme.dividerColor.withOpacity(0.05)),
+          boxShadow: theme.brightness == Brightness.light 
+              ? [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))]
+              : [],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -372,7 +382,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               child: Icon(icon, size: 24, color: color),
             ),
             const SizedBox(height: 12),
-            Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF1E293B))),
+            Text(title, textAlign: TextAlign.center, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface)),
           ],
         ),
       ),
@@ -385,12 +395,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final size = MediaQuery.of(context).size;
     final isSmallScreen = size.width < 600;
 
+    final theme = Theme.of(context);
     return Container(
       padding: EdgeInsets.all(isSmallScreen ? 16 : 24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 4))],
+        border: Border.all(color: theme.dividerColor.withOpacity(0.05)),
+        boxShadow: theme.brightness == Brightness.light 
+            ? [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 4))]
+            : [],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -402,16 +416,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Application Trends', style: TextStyle(fontSize: isSmallScreen ? 16 : 18, fontWeight: FontWeight.w800, color: const Color(0xFF0F172A))),
-                    Text('Application volume over the last 30 days', style: TextStyle(fontSize: isSmallScreen ? 10 : 12, color: Colors.grey)),
+                    Text('Application Trends', style: TextStyle(fontSize: isSmallScreen ? 16 : 18, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface)),
+                    Text('Application volume over the last 30 days', style: TextStyle(fontSize: isSmallScreen ? 10 : 12, color: theme.colorScheme.onSurface.withOpacity(0.5))),
                   ],
                 ),
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('$total', style: TextStyle(fontSize: isSmallScreen ? 20 : 24, fontWeight: FontWeight.w900, color: const Color(0xFF0F172A))),
-                  const Text('TOTAL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.grey)),
+                  Text('$total', style: TextStyle(fontSize: isSmallScreen ? 20 : 24, fontWeight: FontWeight.w900, color: theme.colorScheme.onSurface)),
+                  Text('TOTAL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface.withOpacity(0.4))),
                 ],
               ),
             ],
@@ -493,7 +507,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 children: [
                                   TextSpan(
                                     text: '${spot.y.toInt()} Applications',
-                                    style: TextStyle(color: Colors.white.withOpacity(0.8), fontWeight: FontWeight.w500, fontSize: 11),
+                                    style: TextStyle(color: theme.cardColor.withOpacity(0.8), fontWeight: FontWeight.w500, fontSize: 11),
                                   ),
                                 ],
                               );
@@ -542,20 +556,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   Widget _buildActivitySection(List<dynamic> activities) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 4))],
+        border: Border.all(color: theme.dividerColor.withOpacity(0.05)),
+        boxShadow: theme.brightness == Brightness.light 
+            ? [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 4))]
+            : [],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Recent Activity', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
+          Text('Recent Activity', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface)),
           const SizedBox(height: 24),
           if (activities.isEmpty)
-            const Padding(padding: EdgeInsets.all(40), child: Center(child: Text('No recent activity', style: TextStyle(color: Colors.grey))))
+            Padding(padding: const EdgeInsets.all(40), child: Center(child: Text('No recent activity', style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.4)))))
           else
             ListView.builder(
               shrinkWrap: true,
@@ -633,6 +651,7 @@ class _StatCardState extends State<_StatCard> {
   Widget build(BuildContext context) {
     final color = widget.stat['color'] as Color;
     final showHighlight = widget.isActive || _isHovered;
+    final theme = Theme.of(context);
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
@@ -640,10 +659,12 @@ class _StatCardState extends State<_StatCard> {
         duration: const Duration(milliseconds: 200),
         transform: Matrix4.identity()..scale(showHighlight ? 1.02 : 1.0),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: theme.cardColor,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: showHighlight ? color.withOpacity(0.4) : Colors.white, width: 2),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
+          border: Border.all(color: showHighlight ? color.withOpacity(0.4) : theme.dividerColor.withOpacity(0.05), width: 2),
+          boxShadow: theme.brightness == Brightness.light 
+              ? [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))]
+              : [],
         ),
         child: InkWell(
           onTap: widget.onTap,
@@ -664,9 +685,9 @@ class _StatCardState extends State<_StatCard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(widget.stat['value'] as String, style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1.5, color: Color(0xFF0F172A))),
+                    Text(widget.stat['value'] as String, style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1.5, color: theme.colorScheme.onSurface)),
                     const SizedBox(height: 6),
-                    Text(widget.stat['title'] as String, style: const TextStyle(fontSize: 13, color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
+                    Text(widget.stat['title'] as String, style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withOpacity(0.6), fontWeight: FontWeight.w600)),
                   ],
                 ),
               ],
@@ -705,7 +726,7 @@ class _ActivityCard extends StatelessWidget {
     }
   }
 
-  Color get _color {
+  Color _getColor(BuildContext context) {
     switch (type.toLowerCase()) {
       case 'application': return const Color(0xFF6366F1);
       case 'job_post':
@@ -713,12 +734,13 @@ class _ActivityCard extends StatelessWidget {
       case 'interview': return const Color(0xFF8B5CF6);
       case 'shortlist': return const Color(0xFFF59E0B);
       case 'reject': return const Color(0xFFF43F5E);
-      default: return Colors.grey;
+      default: return Theme.of(context).colorScheme.onSurface.withOpacity(0.4);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -729,8 +751,8 @@ class _ActivityCard extends StatelessWidget {
           children: [
             Container(
               padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: _color.withOpacity(0.1), shape: BoxShape.circle),
-              child: Icon(_icon, size: 16, color: _color),
+              decoration: BoxDecoration(color: _getColor(context).withOpacity(0.1), shape: BoxShape.circle),
+              child: Icon(_icon, size: 16, color: _getColor(context)),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -739,15 +761,15 @@ class _ActivityCard extends StatelessWidget {
                 children: [
                   RichText(
                     text: TextSpan(
-                      style: const TextStyle(fontSize: 14, color: Color(0xFF1E293B)),
+                      style: TextStyle(fontSize: 14, color: theme.colorScheme.onSurface),
                       children: [
                         TextSpan(text: title, style: const TextStyle(fontWeight: FontWeight.w800)),
-                        TextSpan(text: ' $subtitle', style: const TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
+                        TextSpan(text: ' $subtitle', style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.6), fontWeight: FontWeight.w500)),
                       ],
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(time, style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8), fontWeight: FontWeight.w600)),
+                  Text(time, style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.4), fontWeight: FontWeight.w600)),
                 ],
               ),
             ),

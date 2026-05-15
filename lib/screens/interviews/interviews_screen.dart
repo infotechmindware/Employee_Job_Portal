@@ -51,7 +51,7 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
     final isDesktop = screenWidth > 1024;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SingleChildScrollView(
         padding: EdgeInsets.all(isDesktop ? 24 : 16),
         physics: const ClampingScrollPhysics(),
@@ -77,10 +77,11 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
   }
 
   Widget _buildHeader(bool isDesktop) {
+    final theme = Theme.of(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Expanded(
+        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -89,16 +90,16 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF1E293B),
+                  color: theme.colorScheme.onSurface,
                   letterSpacing: -1,
                 ),
               ),
-              SizedBox(height: 4),
+              const SizedBox(height: 4),
               Text(
                 'Manage and track all candidate interviews',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Color(0xFF64748B),
+                  color: theme.colorScheme.onSurface.withOpacity(0.6),
                   fontWeight: FontWeight.w400,
                 ),
               ),
@@ -217,19 +218,20 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
   }
 
   Widget _buildStatCard(Map<String, dynamic> stat, bool isDesktop) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
-        boxShadow: [
+        border: Border.all(color: theme.dividerColor.withOpacity(0.05)),
+        boxShadow: theme.brightness == Brightness.light ? [
           BoxShadow(
             color: Colors.black.withOpacity(0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
-        ],
+        ] : [],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -251,7 +253,7 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
-                  color: const Color(0xFF94A3B8),
+                  color: theme.colorScheme.onSurface.withOpacity(0.4),
                   letterSpacing: 0.8,
                 ),
               ),
@@ -260,17 +262,17 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
           const SizedBox(height: 12),
           Text(
             stat['value'] as String,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w800,
-              color: Color(0xFF1E293B),
+              color: theme.colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             stat['subtitle'] as String,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+            style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurface.withOpacity(0.6), fontWeight: FontWeight.w500),
           ),
         ],
       ),
@@ -283,39 +285,45 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
       children: [
         _buildTabs(),
         const SizedBox(height: 24),
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFF1F5F9)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.02),
-                blurRadius: 15,
-                offset: const Offset(0, 8),
+        Builder(
+          builder: (context) {
+            final theme = Theme.of(context);
+            return Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: theme.cardColor,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: theme.dividerColor.withOpacity(0.05)),
+                boxShadow: theme.brightness == Brightness.light ? [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.02),
+                    blurRadius: 15,
+                    offset: const Offset(0, 8),
+                  ),
+                ] : [],
               ),
-            ],
-          ),
-          child: Column(
-            children: [
-              _buildSearchField(double.infinity),
-              const SizedBox(height: 16),
-              Row(
+              child: Column(
                 children: [
-                  Expanded(child: _buildDropdownField(_selectedType, _typeOptions, (val) => setState(() => _selectedType = val!), AlignmentDirectional.centerStart)),
-                  const SizedBox(width: 12),
-                  Expanded(child: _buildDropdownField(_selectedSort, _sortOptions, (val) => setState(() => _selectedSort = val!), AlignmentDirectional.centerEnd)),
+                  _buildSearchField(double.infinity),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(child: _buildDropdownField(_selectedType, _typeOptions, (val) => setState(() => _selectedType = val!), AlignmentDirectional.centerStart)),
+                      const SizedBox(width: 12),
+                      Expanded(child: _buildDropdownField(_selectedSort, _sortOptions, (val) => setState(() => _selectedSort = val!), AlignmentDirectional.centerEnd)),
+                    ],
+                  ),
                 ],
               ),
-            ],
-          ),
+            );
+          }
         ),
       ],
     );
   }
 
   Widget _buildTabs() {
+    final theme = Theme.of(context);
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       physics: const ClampingScrollPhysics(),
@@ -330,15 +338,15 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFF4F46E5) : Colors.white,
+                  color: isSelected ? AppColors.primary : theme.cardColor,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: isSelected ? const Color(0xFF4F46E5) : const Color(0xFFE2E8F0),
+                    color: isSelected ? AppColors.primary : theme.dividerColor.withOpacity(0.1),
                   ),
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
-                            color: const Color(0xFF4F46E5).withOpacity(0.2),
+                            color: AppColors.primary.withOpacity(0.2),
                             blurRadius: 8,
                             offset: const Offset(0, 4),
                           )
@@ -348,7 +356,7 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
                 child: Text(
                   _tabs[index],
                   style: TextStyle(
-                    color: isSelected ? Colors.white : const Color(0xFF64748B),
+                    color: isSelected ? Colors.white : theme.colorScheme.onSurface.withOpacity(0.6),
                     fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
                     fontSize: 13,
                   ),
@@ -362,32 +370,35 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
   }
 
   Widget _buildSearchField(double width) {
+    final theme = Theme.of(context);
     return SizedBox(
       width: width,
       height: 52,
       child: TextField(
+        style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 14),
         decoration: InputDecoration(
           hintText: 'Search interviews...',
-          hintStyle: const TextStyle(fontSize: 14, color: Color(0xFF94A3B8)),
-          prefixIcon: const Icon(LucideIcons.search, size: 18, color: Color(0xFF64748B)),
+          hintStyle: TextStyle(fontSize: 14, color: theme.colorScheme.onSurface.withOpacity(0.4)),
+          prefixIcon: Icon(LucideIcons.search, size: 18, color: theme.colorScheme.onSurface.withOpacity(0.5)),
           filled: true,
-          fillColor: const Color(0xFFF8FAFC),
+          fillColor: theme.brightness == Brightness.light ? const Color(0xFFF8FAFC) : theme.scaffoldBackgroundColor.withOpacity(0.5),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5)),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: theme.dividerColor.withOpacity(0.1))),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: theme.dividerColor.withOpacity(0.1))),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
         ),
       ),
     );
   }
 
   Widget _buildDropdownField(String value, List<String> items, ValueChanged<String?> onChanged, AlignmentGeometry menuAlignment) {
+    final theme = Theme.of(context);
     return Container(
       height: 48,
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: theme.brightness == Brightness.light ? const Color(0xFFF8FAFC) : theme.scaffoldBackgroundColor.withOpacity(0.5),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
+        border: Border.all(color: theme.dividerColor.withOpacity(0.05), width: 1.5),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.01),
@@ -402,13 +413,13 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
           isExpanded: true,
           alignment: menuAlignment,
           borderRadius: BorderRadius.circular(16),
-          dropdownColor: Colors.white,
+          dropdownColor: theme.cardColor,
           elevation: 12,
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          icon: const Icon(LucideIcons.chevronDown, size: 16, color: Color(0xFF64748B)),
-          style: const TextStyle(
+          icon: Icon(LucideIcons.chevronDown, size: 16, color: theme.colorScheme.onSurface.withOpacity(0.5)),
+          style: TextStyle(
             fontSize: 13,
-            color: Color(0xFF1E293B),
+            color: theme.colorScheme.onSurface,
             fontWeight: FontWeight.w700,
             fontFamily: 'Inter',
           ),
@@ -424,33 +435,34 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
   }
 
   Widget _buildEmptyState() {
+    final theme = Theme.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 80, horizontal: 24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: theme.dividerColor.withOpacity(0.05)),
       ),
       child: Column(
         children: [
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
+              color: theme.brightness == Brightness.light ? const Color(0xFFF8FAFC) : theme.scaffoldBackgroundColor.withOpacity(0.5),
               shape: BoxShape.circle,
             ),
-            child: const Icon(LucideIcons.calendar, size: 56, color: Color(0xFFCBD5E1)),
+            child: Icon(LucideIcons.calendar, size: 56, color: theme.colorScheme.onSurface.withOpacity(0.2)),
           ),
           const SizedBox(height: 24),
-          const Text(
+          Text(
             'No Interviews Found',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Schedule your first interview to get started.',
-            style: TextStyle(fontSize: 15, color: Color(0xFF64748B)),
+            style: TextStyle(fontSize: 15, color: theme.colorScheme.onSurface.withOpacity(0.6)),
           ),
           const SizedBox(height: 32),
           Container(
@@ -480,6 +492,7 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
   }
 
   void _showScheduleDialog(BuildContext context) {
+    final theme = Theme.of(context);
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -488,7 +501,7 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
           width: 500,
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: theme.cardColor,
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
@@ -506,18 +519,18 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             'Schedule Interview',
-                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface),
                           ),
-                          SizedBox(height: 4),
+                          const SizedBox(height: 4),
                           Text(
                             'Fill in the details to set up a new meeting',
-                            style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                            style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withOpacity(0.6)),
                           ),
                         ],
                       ),
@@ -579,9 +592,9 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
-                            side: const BorderSide(color: Color(0xFFE2E8F0)),
+                            side: BorderSide(color: theme.dividerColor.withOpacity(0.1)),
                           ),
-                          foregroundColor: const Color(0xFF64748B),
+                          foregroundColor: theme.colorScheme.onSurface.withOpacity(0.6),
                         ),
                         child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w700)),
                       ),
@@ -628,23 +641,25 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         label,
-        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF475569)),
+        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
       ),
     );
   }
 
   Widget _buildDialogField(IconData icon, String hint) {
+    final theme = Theme.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: theme.brightness == Brightness.light ? const Color(0xFFF8FAFC) : theme.scaffoldBackgroundColor.withOpacity(0.5),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: theme.dividerColor.withOpacity(0.1)),
       ),
       child: TextField(
+        style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 14),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: const TextStyle(fontSize: 14, color: Color(0xFF94A3B8)),
-          prefixIcon: Icon(icon, size: 18, color: const Color(0xFF64748B)),
+          hintStyle: TextStyle(fontSize: 14, color: theme.colorScheme.onSurface.withOpacity(0.4)),
+          prefixIcon: Icon(icon, size: 18, color: theme.colorScheme.onSurface.withOpacity(0.5)),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
@@ -653,23 +668,25 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
   }
 
   Widget _buildDialogDropdown(List<String> items) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: theme.brightness == Brightness.light ? const Color(0xFFF8FAFC) : theme.scaffoldBackgroundColor.withOpacity(0.5),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: theme.dividerColor.withOpacity(0.1)),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: items[0],
           isExpanded: true,
+          dropdownColor: theme.cardColor,
           items: items.map((String val) => DropdownMenuItem<String>(
             value: val,
-            child: Text(val, style: const TextStyle(fontSize: 14, color: Color(0xFF1E293B))),
+            child: Text(val, style: TextStyle(fontSize: 14, color: theme.colorScheme.onSurface)),
           )).toList(),
           onChanged: (val) {},
-          icon: const Icon(LucideIcons.chevronDown, size: 16, color: Color(0xFF64748B)),
+          icon: Icon(LucideIcons.chevronDown, size: 16, color: theme.colorScheme.onSurface.withOpacity(0.5)),
         ),
       ),
     );
@@ -723,21 +740,22 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
     final meetingLink = interview['meeting_link']?.toString() ?? '';
     final bool isLive = status == 'LIVE' || status == 'INTERVIEWING';
 
+    final theme = Theme.of(context);
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
+        border: Border.all(color: theme.dividerColor.withOpacity(0.05)),
+        boxShadow: theme.brightness == Brightness.light ? [
           BoxShadow(
             color: Colors.black.withOpacity(0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
-        ],
+        ] : [],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -762,12 +780,12 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
                   children: [
                     Text(
                       candidateName,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1E293B)),
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: theme.colorScheme.onSurface),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       jobTitle,
-                      style: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
+                      style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.6), fontSize: 13),
                     ),
                   ],
                 ),
@@ -780,7 +798,7 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
                 ),
                 child: Text(
                   status.toUpperCase(),
-                  style: const TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.bold, fontSize: 10),
+                  style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 10),
                 ),
               ),
             ],

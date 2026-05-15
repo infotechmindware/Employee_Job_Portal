@@ -28,7 +28,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     final isTablet = size.width > 700;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: RefreshIndicator(
         onRefresh: () => ref.refresh(dashboardDataProvider.future),
         color: AppColors.primary,
@@ -48,13 +48,14 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   }
 
   Widget _buildErrorState(Object err) {
+    final theme = Theme.of(context);
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(LucideIcons.alertCircle, size: 48, color: Colors.redAccent),
+          Icon(LucideIcons.alertCircle, size: 48, color: theme.colorScheme.error),
           const SizedBox(height: 16),
-          const Text('Failed to load analytics data', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF1E293B))),
+          Text('Failed to load analytics data', style: TextStyle(fontWeight: FontWeight.w700, color: theme.colorScheme.onSurface)),
           const SizedBox(height: 16),
           ElevatedButton(
             onPressed: () => ref.refresh(dashboardDataProvider),
@@ -106,12 +107,15 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
       },
     ];
 
+    final theme = Theme.of(context);
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9)],
+          colors: theme.brightness == Brightness.light 
+            ? [const Color(0xFFF8FAFC), const Color(0xFFF1F5F9)]
+            : [theme.scaffoldBackgroundColor, theme.scaffoldBackgroundColor.withOpacity(0.8)],
         ),
       ),
       child: SingleChildScrollView(
@@ -228,17 +232,18 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
   Widget _buildCommunicationEffectiveness(Map<String, dynamic> data) {
     final comm = data['communication_effectiveness'] ?? {};
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: theme.dividerColor.withOpacity(0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Communication Effectiveness', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
+          Text('Communication Effectiveness', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface)),
           const SizedBox(height: 24),
           Row(
             children: [
@@ -256,7 +261,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             ],
           ),
           const SizedBox(height: 24),
-          const Text('Interview Invites Read Rate', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF64748B))),
+          Text('Interview Invites Read Rate', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: theme.colorScheme.onSurface.withOpacity(0.5))),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -266,7 +271,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   child: LinearProgressIndicator(
                     value: (comm['read_rate'] ?? 0) / 100,
                     minHeight: 8,
-                    backgroundColor: const Color(0xFFF1F5F9),
+                    backgroundColor: theme.dividerColor.withOpacity(0.05),
                     valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFF43F5E)),
                   ),
                 ),
@@ -282,27 +287,27 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
   Widget _buildNotificationSystem(Map<String, dynamic> data) {
     final notify = data['notification_system'] ?? {};
-    final chartData = notify['chart_data'] as List? ?? [];
+    final theme = Theme.of(context);
     
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: theme.dividerColor.withOpacity(0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Notification System', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
+          Text('Notification System', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface)),
           const SizedBox(height: 24),
           Row(
             children: [
               Expanded(
                 child: Column(
                   children: [
-                    Text(notify['total_sent']?.toString() ?? '0', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
-                    const Text('Total Sent', style: TextStyle(fontSize: 10, color: Color(0xFF64748B), fontWeight: FontWeight.w700)),
+                    Text(notify['total_sent']?.toString() ?? '0', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: theme.colorScheme.onSurface)),
+                    Text('Total Sent', style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurface.withOpacity(0.4), fontWeight: FontWeight.w700)),
                   ],
                 ),
               ),
@@ -310,7 +315,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 child: Column(
                   children: [
                     Text('${notify['delivery_rate'] ?? 0}%', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF10B981))),
-                    const Text('Delivery Rate', style: TextStyle(fontSize: 10, color: Color(0xFF64748B), fontWeight: FontWeight.w700)),
+                    Text('Delivery Rate', style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurface.withOpacity(0.4), fontWeight: FontWeight.w700)),
                   ],
                 ),
               ),
@@ -323,7 +328,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 child: Column(
                   children: [
                     Text('${notify['open_rate'] ?? 0}%', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFFF43F5E))),
-                    const Text('Open Rate', style: TextStyle(fontSize: 10, color: Color(0xFF64748B), fontWeight: FontWeight.w700)),
+                    Text('Open Rate', style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurface.withOpacity(0.4), fontWeight: FontWeight.w700)),
                   ],
                 ),
               ),
@@ -331,7 +336,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 child: Column(
                   children: [
                     Text('${notify['reminder_success'] ?? 0}%', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFFF43F5E))),
-                    const Text('Reminder Success', style: TextStyle(fontSize: 10, color: Color(0xFF64748B), fontWeight: FontWeight.w700)),
+                    Text('Reminder Success', style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurface.withOpacity(0.4), fontWeight: FontWeight.w700)),
                   ],
                 ),
               ),
@@ -350,9 +355,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                     sideTitles: SideTitles(
                       showTitles: true,
                       getTitlesWidget: (value, meta) {
-                        const style = TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.w600, fontSize: 10);
-                        if (value.toInt() == 0) return const Padding(padding: EdgeInsets.only(top: 8), child: Text('Sent', style: style));
-                        if (value.toInt() == 1) return const Padding(padding: EdgeInsets.only(top: 8), child: Text('Delivered', style: style));
+                        final style = TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.3), fontWeight: FontWeight.w600, fontSize: 10);
+                        if (value.toInt() == 0) return Padding(padding: const EdgeInsets.only(top: 8), child: Text('Sent', style: style));
+                        if (value.toInt() == 1) return Padding(padding: const EdgeInsets.only(top: 8), child: Text('Delivered', style: style));
                         return const Text('');
                       },
                     ),
@@ -364,8 +369,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 gridData: const FlGridData(show: false),
                 borderData: FlBorderData(show: false),
                 barGroups: [
-                  BarChartGroupData(x: 0, barRods: [BarChartRodData(toY: (notify['total_sent'] ?? 0).toDouble(), color: const Color(0xFFE2E8F0), width: 60, borderRadius: BorderRadius.circular(4))]),
-                  BarChartGroupData(x: 1, barRods: [BarChartRodData(toY: (notify['total_sent'] ?? 0).toDouble() * 0.98, color: const Color(0xFFE2E8F0), width: 60, borderRadius: BorderRadius.circular(4))]),
+                  BarChartGroupData(x: 0, barRods: [BarChartRodData(toY: (notify['total_sent'] ?? 0).toDouble(), color: theme.dividerColor.withOpacity(0.05), width: 60, borderRadius: BorderRadius.circular(4))]),
+                  BarChartGroupData(x: 1, barRods: [BarChartRodData(toY: (notify['total_sent'] ?? 0).toDouble() * 0.98, color: theme.dividerColor.withOpacity(0.05), width: 60, borderRadius: BorderRadius.circular(4))]),
                 ],
               ),
             ),
@@ -378,18 +383,19 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   Widget _buildActivityOverview(Map<String, dynamic> data) {
     final activity = data['activity_overview'] ?? {};
     final chartData = activity['chart_data'] as List? ?? [];
+    final theme = Theme.of(context);
     
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: theme.dividerColor.withOpacity(0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Activity Overview', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
+          Text('Activity Overview', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface)),
           const SizedBox(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -408,8 +414,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   show: true,
                   drawVerticalLine: false,
                   horizontalInterval: 20,
-                  getDrawingHorizontalLine: (value) => const FlLine(
-                    color: Color(0xFFF1F5F9),
+                  getDrawingHorizontalLine: (value) => FlLine(
+                    color: theme.dividerColor.withOpacity(0.05),
                     strokeWidth: 1,
                   ),
                 ),
@@ -424,7 +430,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                         if (val % 7 == 0) {
                           return Padding(
                             padding: const EdgeInsets.only(top: 8),
-                            child: Text('Day ${val.toInt() + 1}', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 10, fontWeight: FontWeight.w600)),
+                            child: Text('Day ${val.toInt() + 1}', style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.3), fontSize: 10, fontWeight: FontWeight.w600)),
                           );
                         }
                         return const Text('');
@@ -472,21 +478,23 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   }
 
   Widget _buildMiniActivityStat(String label, String val) {
+    final theme = Theme.of(context);
     return Column(
       children: [
-        Text(val, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+        Text(val, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: theme.colorScheme.onSurface)),
         const SizedBox(height: 4),
-        Text(label, style: const TextStyle(fontSize: 10, color: Color(0xFF64748B), fontWeight: FontWeight.w700)),
+        Text(label, style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurface.withOpacity(0.4), fontWeight: FontWeight.w700)),
       ],
     );
   }
 
   Widget _buildLegendItem(String label, Color color) {
+    final theme = Theme.of(context);
     return Row(
       children: [
         Container(width: 12, height: 4, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
         const SizedBox(width: 8),
-        Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+        Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface.withOpacity(0.4))),
       ],
     );
   }
@@ -494,23 +502,24 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   Widget _buildSystemSecurity(Map<String, dynamic> data) {
     final sys = data['system_security'] ?? {};
     final events = sys['security_events'] as List? ?? [];
+    final theme = Theme.of(context);
     
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: theme.dividerColor.withOpacity(0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('System & Security', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
+          Text('System & Security', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface)),
           const SizedBox(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Subscription ROI', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF64748B))),
+              Text('Subscription ROI', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: theme.colorScheme.onSurface.withOpacity(0.4))),
               Text(sys['subscription_roi']?.toString() ?? '0%', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF10B981))),
             ],
           ),
@@ -532,10 +541,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             ),
           ),
           const SizedBox(height: 32),
-          const Text('Recent Security Events', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
+          Text('Recent Security Events', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface)),
           const SizedBox(height: 16),
           if (events.isEmpty)
-            const Text('No security logs available', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12))
+            Text('No security logs available', style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.3), fontSize: 12))
           else
             ...events.map((e) => Padding(
               padding: const EdgeInsets.only(bottom: 12),
@@ -551,8 +560,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(e['event'].toString(), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1E293B))),
-                        Text(e['time'].toString(), style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
+                        Text(e['event'].toString(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface.withOpacity(0.8))),
+                        Text(e['time'].toString(), style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurface.withOpacity(0.3))),
                       ],
                     ),
                   ),
@@ -566,6 +575,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   }
 
   Widget _buildHeader(bool isDesktop) {
+    final theme = Theme.of(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -573,19 +583,19 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Analytics Dashboard',
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.w900,
-                  color: Color(0xFF0F172A),
+                  color: theme.colorScheme.onSurface,
                   letterSpacing: -0.5,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 'Detailed insights into your recruitment and hiring metrics',
-                style: TextStyle(fontSize: 14, color: const Color(0xFF64748B).withOpacity(0.8), fontWeight: FontWeight.w500),
+                style: TextStyle(fontSize: 14, color: theme.colorScheme.onSurface.withOpacity(0.5), fontWeight: FontWeight.w500),
               ),
             ],
           ),
@@ -593,13 +603,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         if (isDesktop)
           Container(
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF6366F1), Color(0xFF4F46E5)],
+              gradient: LinearGradient(
+                colors: [AppColors.primary, AppColors.primary.withOpacity(0.8)],
               ),
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF6366F1).withOpacity(0.3),
+                  color: AppColors.primary.withOpacity(0.3),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
@@ -633,22 +643,24 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   }
 
   Widget _buildFilterDropdown(String value, List<String> items, ValueChanged<String?> onChanged) {
+    final theme = Theme.of(context);
     return Container(
       height: 44,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
+        border: Border.all(color: theme.dividerColor.withOpacity(0.1)),
+        boxShadow: theme.brightness == Brightness.light ? [
           BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 4, offset: const Offset(0, 2)),
-        ],
+        ] : [],
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: items.contains(value) ? value : items.first,
-          icon: const Icon(LucideIcons.chevronDown, size: 14, color: Color(0xFF64748B)),
-          style: const TextStyle(fontSize: 14, color: Color(0xFF1E293B), fontWeight: FontWeight.w600),
+          icon: Icon(LucideIcons.chevronDown, size: 14, color: theme.colorScheme.onSurface.withOpacity(0.4)),
+          dropdownColor: theme.cardColor,
+          style: TextStyle(fontSize: 14, color: theme.colorScheme.onSurface, fontWeight: FontWeight.w600),
           items: items.map((val) => DropdownMenuItem(value: val, child: Text(val))).toList(),
           onChanged: onChanged,
         ),
@@ -680,19 +692,20 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
   Widget _buildStatCard(Map<String, dynamic> stat) {
     final color = stat['color'] as Color;
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.5)),
-        boxShadow: [
+        border: Border.all(color: theme.dividerColor.withOpacity(0.05)),
+        boxShadow: theme.brightness == Brightness.light ? [
           BoxShadow(
             color: color.withOpacity(0.08),
             blurRadius: 24,
             offset: const Offset(0, 8),
           ),
-        ],
+        ] : [],
       ),
       child: Row(
         children: [
@@ -719,12 +732,12 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
               children: [
                 Text(
                   stat['title'] as String,
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w700, letterSpacing: 0.5),
+                  style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.4), fontWeight: FontWeight.w700, letterSpacing: 0.5),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   stat['value'] as String,
-                  style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Color(0xFF0F172A), height: 1),
+                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: theme.colorScheme.onSurface, height: 1),
                 ),
                 const SizedBox(height: 6),
                 Container(
@@ -753,15 +766,16 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     final interviewed = (funnel['interviewed'] ?? 0) as num;
     final offered = (funnel['offered'] ?? 0) as num;
     final hired = (funnel['hired'] ?? 0) as num;
+    final theme = Theme.of(context);
 
     final maxVal = applied == 0 ? 10.0 : applied.toDouble() * 1.1;
 
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: theme.dividerColor.withOpacity(0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -769,7 +783,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Hiring Funnel', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
+              Text('Hiring Funnel', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface)),
               TextButton(
                 onPressed: () => ref.refresh(dashboardDataProvider),
                 child: const Text('Refresh', style: TextStyle(color: Color(0xFFF43F5E), fontWeight: FontWeight.w700)),
@@ -790,13 +804,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                     sideTitles: SideTitles(
                       showTitles: true,
                       getTitlesWidget: (value, meta) {
-                        const style = TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600, fontSize: 11);
+                        final style = TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.4), fontWeight: FontWeight.w600, fontSize: 11);
                         switch (value.toInt()) {
-                          case 0: return const Padding(padding: EdgeInsets.only(top: 8), child: Text('Applied', style: style));
-                          case 1: return const Padding(padding: EdgeInsets.only(top: 8), child: Text('Shortlisted', style: style));
-                          case 2: return const Padding(padding: EdgeInsets.only(top: 8), child: Text('Interviewed', style: style));
-                          case 3: return const Padding(padding: EdgeInsets.only(top: 8), child: Text('Offered', style: style));
-                          case 4: return const Padding(padding: EdgeInsets.only(top: 8), child: Text('Hired', style: style));
+                          case 0: return Padding(padding: const EdgeInsets.only(top: 8), child: Text('Applied', style: style));
+                          case 1: return Padding(padding: const EdgeInsets.only(top: 8), child: Text('Shortlisted', style: style));
+                          case 2: return Padding(padding: const EdgeInsets.only(top: 8), child: Text('Interviewed', style: style));
+                          case 3: return Padding(padding: const EdgeInsets.only(top: 8), child: Text('Offered', style: style));
+                          case 4: return Padding(padding: const EdgeInsets.only(top: 8), child: Text('Hired', style: style));
                           default: return const Text('');
                         }
                       },
@@ -834,7 +848,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           color: color,
           width: 35,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
-          backDrawRodData: BackgroundBarChartRodData(show: true, toY: 10, color: const Color(0xFFF1F5F9)),
+          backDrawRodData: BackgroundBarChartRodData(show: true, toY: 10, color: Theme.of(context).dividerColor.withOpacity(0.05)),
         ),
       ],
     );
@@ -854,13 +868,14 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   }
 
   Widget _buildMiniFunnelStat(String label, num val, num pct) {
+    final theme = Theme.of(context);
     return Column(
       children: [
-        Text(val.toString(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+        Text(val.toString(), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: theme.colorScheme.onSurface)),
         const SizedBox(height: 4),
-        Text(label, style: const TextStyle(fontSize: 10, color: Color(0xFF64748B), fontWeight: FontWeight.w700)),
+        Text(label, style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurface.withOpacity(0.4), fontWeight: FontWeight.w700)),
         const SizedBox(height: 2),
-        Text('${pct.toStringAsFixed(1)}%', style: const TextStyle(fontSize: 9, color: Color(0xFF94A3B8), fontWeight: FontWeight.w600)),
+        Text('${pct.toStringAsFixed(1)}%', style: TextStyle(fontSize: 9, color: theme.colorScheme.onSurface.withOpacity(0.3), fontWeight: FontWeight.w600)),
       ],
     );
   }
@@ -869,17 +884,18 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     final tth = data['time_to_hire'] ?? {};
     final chartData = tth['chart_data'] as List? ?? [];
 
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: theme.dividerColor.withOpacity(0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Time to Hire', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
+          Text('Time to Hire', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface)),
           const SizedBox(height: 24),
           Row(
             children: [
@@ -957,13 +973,14 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   Widget _buildOfferAcceptance(Map<String, dynamic> data) {
     final oa = data['offer_acceptance'] ?? {};
     final rate = (oa['rate'] ?? 0) / 100.0;
+    final theme = Theme.of(context);
 
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: theme.dividerColor.withOpacity(0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -971,7 +988,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Offer Acceptance', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
+              Text('Offer Acceptance', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface)),
               Text('${oa['rate'] ?? 0}%', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF10B981))),
             ],
           ),
@@ -981,7 +998,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             child: LinearProgressIndicator(
               value: rate.toDouble(),
               minHeight: 12,
-              backgroundColor: const Color(0xFFF1F5F9),
+              backgroundColor: theme.dividerColor.withOpacity(0.05),
               valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF10B981)),
             ),
           ),
@@ -989,7 +1006,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           Row(
             children: [
               Expanded(child: _buildSimpleMetric('Offers Made', (oa['made'] ?? 0).toString())),
-              Expanded(child: _buildSimpleMetric('Offers Accepted', (oa['accepted'] ?? 0).toString(), color: const Color(0xFF10B981), bg: const Color(0xFFF0FDF4))),
+              Expanded(child: _buildSimpleMetric('Offers Accepted', (oa['accepted'] ?? 0).toString(), color: const Color(0xFF10B981), bg: theme.dividerColor.withOpacity(0.05))),
             ],
           ),
         ],
@@ -997,16 +1014,19 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     );
   }
 
-  Widget _buildSimpleMetric(String label, String val, {Color color = const Color(0xFF0F172A), Color bg = const Color(0xFFF8FAFC)}) {
+  Widget _buildSimpleMetric(String label, String val, {Color? color, Color? bg}) {
+    final theme = Theme.of(context);
+    final finalColor = color ?? theme.colorScheme.onSurface;
+    final finalBg = bg ?? theme.dividerColor.withOpacity(0.05);
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 4),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
+      decoration: BoxDecoration(color: finalBg, borderRadius: BorderRadius.circular(10)),
       child: Column(
         children: [
-          Text(label, style: const TextStyle(fontSize: 10, color: Color(0xFF64748B), fontWeight: FontWeight.w700)),
+          Text(label, style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurface.withOpacity(0.4), fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
-          Text(val, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: color)),
+          Text(val, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: finalColor)),
         ],
       ),
     );
@@ -1029,15 +1049,16 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
       'Other': const Color(0xFF94A3B8),
     };
 
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
-        boxShadow: [
+        border: Border.all(color: theme.dividerColor.withOpacity(0.05)),
+        boxShadow: theme.brightness == Brightness.light ? [
           BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
-        ],
+        ] : [],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1045,7 +1066,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Candidate Sources', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
+              Text('Candidate Sources', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface)),
               if (_selectedSource != null)
                 TextButton(
                   onPressed: () => setState(() => _selectedSource = null),
@@ -1151,7 +1172,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                                  color: isDimmed ? const Color(0xFF94A3B8).withOpacity(0.5) : const Color(0xFF1E293B),
+                                  color: isDimmed ? theme.colorScheme.onSurface.withOpacity(0.2) : theme.colorScheme.onSurface,
                                 ),
                               ),
                             ),
@@ -1179,7 +1200,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   Text(_selectedSource!, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: sourceColors[_selectedSource])),
                   Text(
                     '${sources.firstWhere((s) => s['name'] == _selectedSource)['count']} Candidates',
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: theme.colorScheme.onSurface),
                   ),
                 ],
               ),
@@ -1192,18 +1213,19 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
   Widget _buildApplicationsByLocation(Map<String, dynamic> data) {
     final locations = (data['applications_by_location'] as List? ?? []);
+    final theme = Theme.of(context);
 
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: theme.dividerColor.withOpacity(0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Applications by Location', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
+          Text('Applications by Location', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface)),
           const SizedBox(height: 24),
           ...locations.map((loc) => Padding(
             padding: const EdgeInsets.only(bottom: 16.0),
@@ -1213,7 +1235,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(loc['name'].toString(), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF1E293B))),
+                    Text(loc['name'].toString(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: theme.colorScheme.onSurface)),
                     Text(loc['count'].toString(), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF6366F1))),
                   ],
                 ),
@@ -1238,18 +1260,19 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   Widget _buildInterviewOutcomes(Map<String, dynamic> data) {
     final outcomes = data['interview_outcomes'] ?? {};
     final maxVal = [outcomes['passed'], outcomes['failed'], outcomes['no_show']].map((e) => (e ?? 0) as num).reduce((a, b) => a > b ? a : b).toDouble();
+    final theme = Theme.of(context);
 
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: theme.dividerColor.withOpacity(0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Interview Outcomes', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
+          Text('Interview Outcomes', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface)),
           const SizedBox(height: 32),
           SizedBox(
             height: 200,
@@ -1263,11 +1286,11 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                     sideTitles: SideTitles(
                       showTitles: true,
                       getTitlesWidget: (value, meta) {
-                        const style = TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w700, fontSize: 11);
+                        final style = TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.4), fontWeight: FontWeight.w700, fontSize: 11);
                         switch (value.toInt()) {
-                          case 0: return const Padding(padding: EdgeInsets.only(top: 8), child: Text('Passed', style: style));
-                          case 1: return const Padding(padding: EdgeInsets.only(top: 8), child: Text('Failed', style: style));
-                          case 2: return const Padding(padding: EdgeInsets.only(top: 8), child: Text('No-show', style: style));
+                          case 0: return Padding(padding: const EdgeInsets.only(top: 8), child: Text('Passed', style: style));
+                          case 1: return Padding(padding: const EdgeInsets.only(top: 8), child: Text('Failed', style: style));
+                          case 2: return Padding(padding: const EdgeInsets.only(top: 8), child: Text('No-show', style: style));
                           default: return const Text('');
                         }
                       },
@@ -1295,37 +1318,38 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   Widget _buildJobPerformance(Map<String, dynamic> data) {
     final perf = data['job_performance'] as List? ?? [];
     
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: theme.dividerColor.withOpacity(0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Job Performance & Quality', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
+          Text('Job Performance & Quality', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface)),
           const SizedBox(height: 24),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: DataTable(
               horizontalMargin: 0,
               columnSpacing: 24,
-              headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
-              columns: const [
-                DataColumn(label: Text('JOB TITLE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF64748B)))),
-                DataColumn(label: Text('VIEWS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF64748B)))),
-                DataColumn(label: Text('APPS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF64748B)))),
-                DataColumn(label: Text('CONVERSION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF64748B)))),
-                DataColumn(label: Text('RESUME SCORE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF64748B)))),
-                DataColumn(label: Text('SKILL MATCH', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF64748B)))),
+              headingRowColor: WidgetStateProperty.all(theme.dividerColor.withOpacity(0.05)),
+              columns: [
+                DataColumn(label: Text('JOB TITLE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface.withOpacity(0.4)))),
+                DataColumn(label: Text('VIEWS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface.withOpacity(0.4)))),
+                DataColumn(label: Text('APPS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface.withOpacity(0.4)))),
+                DataColumn(label: Text('CONVERSION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface.withOpacity(0.4)))),
+                DataColumn(label: Text('RESUME SCORE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface.withOpacity(0.4)))),
+                DataColumn(label: Text('SKILL MATCH', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface.withOpacity(0.4)))),
               ],
               rows: perf.map((p) => DataRow(
                 cells: [
-                  DataCell(Text(p['title'], style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)))),
-                  DataCell(Text(p['views'].toString(), style: const TextStyle(fontSize: 13, color: Color(0xFF475569)))),
-                  DataCell(Text(p['apps'].toString(), style: const TextStyle(fontSize: 13, color: Color(0xFF475569)))),
+                  DataCell(Text(p['title'], style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: theme.colorScheme.onSurface))),
+                  DataCell(Text(p['views'].toString(), style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withOpacity(0.6)))),
+                  DataCell(Text(p['apps'].toString(), style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withOpacity(0.6)))),
                   DataCell(Text(p['conversion'], style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF6366F1)))),
                   DataCell(Text(p['resume_score'], style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF10B981)))),
                   DataCell(Text(p['skill_match'], style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFFF59E0B)))),

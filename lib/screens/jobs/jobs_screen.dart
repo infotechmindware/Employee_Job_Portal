@@ -64,7 +64,7 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
     final isDesktop = screenWidth > 1024;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: RefreshIndicator(
         onRefresh: () => ref.read(employerJobsProvider.notifier).fetchAll(),
         child: SingleChildScrollView(
@@ -152,23 +152,26 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
           child: CircularProgressIndicator(),
         ),
       ),
-      error: (err, stack) => Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 40),
-          child: Column(
-            children: [
-              const Icon(LucideIcons.alertCircle, color: Colors.red, size: 48),
-              const SizedBox(height: 16),
-              Text('Error: $err', style: const TextStyle(color: Colors.red)),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () => ref.read(employerJobsProvider.notifier).fetchAll(),
-                child: const Text('Retry'),
-              ),
-            ],
+      error: (err, stack) {
+        final theme = Theme.of(context);
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 40),
+            child: Column(
+              children: [
+                Icon(LucideIcons.alertCircle, color: theme.colorScheme.error, size: 48),
+                const SizedBox(height: 16),
+                Text('Error: $err', style: TextStyle(color: theme.colorScheme.error)),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => ref.read(employerJobsProvider.notifier).fetchAll(),
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -186,19 +189,20 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
       app['status']?.toString().toLowerCase() == 'new'
     ).length;
     
+    final theme = Theme.of(context);
     return Container(
       margin: const EdgeInsets.only(bottom: 4),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
-        boxShadow: [
+        border: Border.all(color: theme.dividerColor.withOpacity(0.05)),
+        boxShadow: theme.brightness == Brightness.light ? [
           BoxShadow(
-            color: const Color(0xFF0F172A).withOpacity(0.04),
+            color: theme.colorScheme.onSurface.withOpacity(0.04),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
-        ],
+        ] : [],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -220,10 +224,10 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
                               Flexible(
                                 child: Text(
                                   job['title'] ?? 'Untitled Job',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w900,
-                                    color: Color(0xFF0F172A),
+                                    color: theme.colorScheme.onSurface,
                                     letterSpacing: -0.5,
                                   ),
                                   maxLines: 1,
@@ -237,12 +241,12 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
                           const SizedBox(height: 6),
                           Row(
                             children: [
-                              const Icon(LucideIcons.building2, size: 12, color: Color(0xFF64748B)),
+                              Icon(LucideIcons.building2, size: 12, color: theme.colorScheme.onSurface.withOpacity(0.6)),
                               const SizedBox(width: 4),
                               Flexible(
                                 child: Text(
                                   'Mindware info tech • ${job['location'] ?? 'Location N/A'}',
-                                  style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+                                  style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.6), fontWeight: FontWeight.w600),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -254,7 +258,7 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
                     ),
                     IconButton(
                       onPressed: () => _editJob(job),
-                      icon: const Icon(LucideIcons.moreVertical, size: 20, color: Color(0xFF94A3B8)),
+                      icon: Icon(LucideIcons.moreVertical, size: 20, color: theme.colorScheme.onSurface.withOpacity(0.4)),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                     ),
@@ -280,7 +284,7 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
+                color: theme.brightness == Brightness.light ? theme.dividerColor.withOpacity(0.03) : theme.scaffoldBackgroundColor.withOpacity(0.5),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Row(
@@ -337,10 +341,12 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
   }
 
   Widget _buildStatusBadge(String status, bool isPublished) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: isPublished ? const Color(0xFFDCFCE7) : const Color(0xFFF1F5F9),
+        color: isPublished ? (isDark ? const Color(0xFF064E3B).withOpacity(0.4) : const Color(0xFFDCFCE7).withOpacity(0.8)) : theme.dividerColor.withOpacity(0.1),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
@@ -348,7 +354,7 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
         style: TextStyle(
           fontSize: 9,
           fontWeight: FontWeight.w900,
-          color: isPublished ? const Color(0xFF166534) : const Color(0xFF64748B),
+          color: isPublished ? (isDark ? const Color(0xFF34D399) : const Color(0xFF166534)) : theme.colorScheme.onSurface.withOpacity(0.6),
           letterSpacing: 0.5,
         ),
       ),
@@ -356,21 +362,22 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
   }
 
   Widget _buildTag(IconData icon, String label) {
+    final theme = Theme.of(context);
     return Container(
       margin: const EdgeInsets.only(right: 8),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
+        color: theme.brightness == Brightness.light ? theme.dividerColor.withOpacity(0.05) : theme.dividerColor.withOpacity(0.05),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: const Color(0xFF64748B)),
+          Icon(icon, size: 12, color: theme.colorScheme.onSurface.withOpacity(0.6)),
           const SizedBox(width: 6),
           Text(
             label,
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF475569)),
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: theme.colorScheme.onSurface.withOpacity(0.8)),
           ),
         ],
       ),
@@ -378,6 +385,7 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
   }
 
   Widget _buildStatItem(String count, String label, Color color) {
+    final theme = Theme.of(context);
     return Expanded(
       child: Column(
         children: [
@@ -388,7 +396,7 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
           const SizedBox(height: 2),
           Text(
             label,
-            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF64748B)),
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: theme.colorScheme.onSurface.withOpacity(0.5)),
           ),
         ],
       ),
@@ -396,19 +404,19 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
   }
 
   Widget _buildStatDivider() {
-    return Container(height: 24, width: 1, color: const Color(0xFFE2E8F0));
+    return Container(height: 24, width: 1, color: Theme.of(context).dividerColor.withOpacity(0.1));
   }
 
   Widget _buildPrimaryButton(String label, IconData icon, bool isPublished, VoidCallback onTap) {
+    final theme = Theme.of(context);
     return InkWell(
       onTap: onTap,
       child: Container(
         height: 48,
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: isPublished 
-              ? [const Color(0xFFF1F5F9), const Color(0xFFF1F5F9)]
-              : [const Color(0xFF6366F1), const Color(0xFF4F46E5)],
+          color: isPublished ? (theme.brightness == Brightness.light ? theme.dividerColor.withOpacity(0.05) : theme.dividerColor.withOpacity(0.1)) : null,
+          gradient: isPublished ? null : const LinearGradient(
+            colors: [Color(0xFF6366F1), Color(0xFF4F46E5)],
           ),
           borderRadius: BorderRadius.circular(12),
           boxShadow: isPublished ? null : [
@@ -422,12 +430,12 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 16, color: isPublished ? const Color(0xFF64748B) : Colors.white),
+            Icon(icon, size: 16, color: isPublished ? theme.colorScheme.onSurface.withOpacity(0.6) : Colors.white),
             const SizedBox(width: 8),
             Text(
               label,
               style: TextStyle(
-                color: isPublished ? const Color(0xFF64748B) : Colors.white,
+                color: isPublished ? theme.colorScheme.onSurface.withOpacity(0.6) : Colors.white,
                 fontWeight: FontWeight.w800,
                 fontSize: 14,
               ),
@@ -439,24 +447,25 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
   }
 
   Widget _buildSecondaryButton(String label, IconData icon, VoidCallback onTap) {
+    final theme = Theme.of(context);
     return InkWell(
       onTap: onTap,
       child: Container(
         height: 48,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: theme.cardColor,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
+          border: Border.all(color: theme.dividerColor.withOpacity(0.1)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 16, color: const Color(0xFF6366F1)),
+            Icon(icon, size: 16, color: AppColors.primary),
             const SizedBox(width: 8),
             Text(
               label,
               style: const TextStyle(
-                color: Color(0xFF6366F1),
+                color: AppColors.primary,
                 fontWeight: FontWeight.w800,
                 fontSize: 14,
               ),
@@ -472,10 +481,11 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
   }
 
   Widget _buildHeader(bool isDesktop) {
+    final theme = Theme.of(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Expanded(
+        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -484,16 +494,16 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF1E293B),
+                  color: theme.colorScheme.onSurface,
                   letterSpacing: -1,
                 ),
               ),
-              SizedBox(height: 4),
+              const SizedBox(height: 4),
               Text(
                 'Manage your job postings',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Color(0xFF64748B),
+                  color: theme.colorScheme.onSurface.withOpacity(0.6),
                   fontWeight: FontWeight.w400,
                 ),
               ),
@@ -534,23 +544,25 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
   }
 
   Widget _buildPlanCard(bool isDesktop) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF0F7FF),
+        color: isDark ? theme.colorScheme.surface : const Color(0xFFF0F7FF),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFD0E7FF)),
+        border: Border.all(color: isDark ? theme.dividerColor.withOpacity(0.1) : const Color(0xFFD0E7FF)),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: theme.cardColor,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(LucideIcons.zap, size: 20, color: Color(0xFF6366F1)),
+            child: const Icon(LucideIcons.zap, size: 20, color: AppColors.primary),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -562,23 +574,23 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
                   spacing: 8,
                   runSpacing: 4,
                   children: [
-                    const Text(
+                    Text(
                       'Current Plan: ',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface),
                     ),
                     const Text(
                       'Free Plan',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF6366F1)),
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.primary),
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFDCFCE7),
+                        color: isDark ? const Color(0xFF064E3B).withOpacity(0.4) : const Color(0xFFDCFCE7),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Text(
+                      child: Text(
                         'Active',
-                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF166534)),
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: isDark ? const Color(0xFF34D399) : const Color(0xFF166534)),
                       ),
                     ),
                   ],
@@ -586,7 +598,7 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
                 const SizedBox(height: 4),
                 Text(
                   'Expires on $_dateStr',
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+                  style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurface.withOpacity(0.6), fontWeight: FontWeight.w500),
                 ),
               ],
             ),
@@ -594,15 +606,15 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
           const SizedBox(width: 8),
           InkWell(
             onTap: () => ref.read(navigationProvider.notifier).setIndex(8),
-            child: const Row(
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
+                const Text(
                   'Manage',
-                  style: TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.w700, fontSize: 12),
+                  style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 12),
                 ),
-                SizedBox(width: 2),
-                Icon(LucideIcons.arrowRight, size: 14, color: Color(0xFF6366F1)),
+                const SizedBox(width: 2),
+                Icon(LucideIcons.arrowRight, size: 14, color: AppColors.primary),
               ],
             ),
           ),
@@ -612,6 +624,7 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
   }
 
   Widget _buildStatusTabs() {
+    final theme = Theme.of(context);
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       physics: const ClampingScrollPhysics(),
@@ -629,10 +642,10 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFF4F46E5) : Colors.white,
+                  color: isSelected ? const Color(0xFF4F46E5) : theme.cardColor,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: isSelected ? const Color(0xFF4F46E5) : const Color(0xFFE2E8F0),
+                    color: isSelected ? const Color(0xFF4F46E5) : theme.dividerColor.withOpacity(0.1),
                   ),
                   boxShadow: isSelected
                       ? [
@@ -647,7 +660,7 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
                 child: Text(
                   _tabs[index],
                   style: TextStyle(
-                    color: isSelected ? Colors.white : const Color(0xFF64748B),
+                    color: isSelected ? Colors.white : theme.colorScheme.onSurface.withOpacity(0.6),
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
                     fontSize: 13,
                   ),
@@ -661,19 +674,20 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
   }
 
   Widget _buildFilterCard(bool isDesktop) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
-        boxShadow: [
+        border: Border.all(color: theme.dividerColor.withOpacity(0.05)),
+        boxShadow: theme.brightness == Brightness.light ? [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: theme.colorScheme.onSurface.withOpacity(0.02),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
-        ],
+        ] : [],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -726,7 +740,7 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF475569), letterSpacing: 0.5),
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6), letterSpacing: 0.5),
         ),
         const SizedBox(height: 10),
         field,
@@ -759,39 +773,42 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
   }
 
   Widget _buildTextField(IconData icon, String hint, {TextEditingController? controller}) {
+    final theme = Theme.of(context);
     return TextField(
       controller: controller,
+      style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 13),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
-        prefixIcon: Icon(icon, size: 18, color: const Color(0xFF64748B)),
+        hintStyle: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.4), fontSize: 13),
+        prefixIcon: Icon(icon, size: 18, color: theme.colorScheme.onSurface.withOpacity(0.5)),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         filled: true,
-        fillColor: const Color(0xFFF8FAFC),
+        fillColor: theme.brightness == Brightness.light ? theme.dividerColor.withOpacity(0.03) : theme.scaffoldBackgroundColor.withOpacity(0.5),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+          borderSide: BorderSide(color: theme.dividerColor.withOpacity(0.1)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+          borderSide: BorderSide(color: theme.dividerColor.withOpacity(0.1)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
         ),
       ),
     );
   }
 
   Widget _buildDropdownField(String value) {
+    final theme = Theme.of(context);
     return Container(
       height: 48,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: theme.brightness == Brightness.light ? const Color(0xFFF8FAFC) : theme.scaffoldBackgroundColor.withOpacity(0.5),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: theme.dividerColor.withOpacity(0.1)),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(

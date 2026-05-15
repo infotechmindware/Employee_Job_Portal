@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../providers/profile_provider.dart';
+import '../../theme/app_colors.dart';
 
 class DocumentVerificationScreen extends ConsumerWidget {
   const DocumentVerificationScreen({super.key});
@@ -14,18 +15,18 @@ class DocumentVerificationScreen extends ConsumerWidget {
     final profile = ref.watch(profileProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SingleChildScrollView(
         padding: EdgeInsets.all(isDesktop ? 32 : 16),
         physics: const ClampingScrollPhysics(),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildHeader(isDesktop),
+            _buildHeader(isDesktop, context),
             const SizedBox(height: 32),
-            _buildStatusHeader(),
+            _buildStatusHeader(context),
             const SizedBox(height: 32),
-            _buildRequiredDocuments(),
+            _buildRequiredDocuments(context),
             const SizedBox(height: 32),
             _buildUploadedDocuments(context, isDesktop, profile),
           ],
@@ -34,8 +35,9 @@ class DocumentVerificationScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeader(bool isDesktop) {
-    return const Column(
+  Widget _buildHeader(bool isDesktop, BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
@@ -43,16 +45,16 @@ class DocumentVerificationScreen extends ConsumerWidget {
           style: TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.w800,
-            color: Color(0xFF1E293B),
+            color: theme.colorScheme.onSurface,
             letterSpacing: -1,
           ),
         ),
-        SizedBox(height: 4),
+        const SizedBox(height: 4),
         Text(
           'Verify your identity and business credentials',
           style: TextStyle(
             fontSize: 14,
-            color: Color(0xFF64748B),
+            color: theme.colorScheme.onSurface.withOpacity(0.6),
             fontWeight: FontWeight.w400,
           ),
         ),
@@ -60,102 +62,105 @@ class DocumentVerificationScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatusHeader() {
+  Widget _buildStatusHeader(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
-        boxShadow: [
+        border: Border.all(color: theme.dividerColor.withOpacity(0.05)),
+        boxShadow: theme.brightness == Brightness.light ? [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: theme.colorScheme.onSurface.withOpacity(0.02),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
-        ],
+        ] : [],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
               Text(
                 'Verification Status',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface),
               ),
-              Spacer(),
-              Icon(LucideIcons.shieldCheck, color: Color(0xFF6366F1), size: 20),
+              const Spacer(),
+              const Icon(LucideIcons.shieldCheck, color: Color(0xFF6366F1), size: 20),
             ],
           ),
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFFBEB),
+              color: isDark ? const Color(0xFF78350F).withOpacity(0.2) : const Color(0xFFFFFBEB),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFFDE68A).withOpacity(0.5)),
+              border: Border.all(color: isDark ? const Color(0xFFF59E0B).withOpacity(0.3) : const Color(0xFFFDE68A).withOpacity(0.5)),
             ),
-            child: const Row(
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(LucideIcons.clock, size: 14, color: Color(0xFFB45309)),
-                SizedBox(width: 8),
+                Icon(LucideIcons.clock, size: 14, color: isDark ? const Color(0xFFF59E0B) : const Color(0xFFB45309)),
+                const SizedBox(width: 8),
                 Text(
                   'Pending Review',
-                  style: TextStyle(color: Color(0xFFB45309), fontSize: 12, fontWeight: FontWeight.w800),
+                  style: TextStyle(color: isDark ? const Color(0xFFF59E0B) : const Color(0xFFB45309), fontSize: 12, fontWeight: FontWeight.w800),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 20),
-          const Text(
+          Text(
             'Your KYC documents are currently being reviewed by our compliance team. This process usually takes 2-3 business days.',
-            style: TextStyle(fontSize: 14, color: Color(0xFF64748B), height: 1.5),
+            style: TextStyle(fontSize: 14, color: theme.colorScheme.onSurface.withOpacity(0.6), height: 1.5),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildRequiredDocuments() {
+  Widget _buildRequiredDocuments(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [const Color(0xFF6366F1).withOpacity(0.05), const Color(0xFF4F46E5).withOpacity(0.02)],
+        colors: [AppColors.primary.withOpacity(0.05), AppColors.primary.withOpacity(0.02)],
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.1)),
+        border: Border.all(color: AppColors.primary.withOpacity(0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Required Documents',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface),
           ),
           const SizedBox(height: 20),
-          _buildBulletItem('Business License / Registration Certificate', LucideIcons.building),
-          _buildBulletItem('Tax ID / GST Certificate', LucideIcons.fileText),
-          _buildBulletItem('Address Proof (Utility Bill / Rent Agreement)', LucideIcons.mapPin),
+          _buildBulletItem('Business License / Registration Certificate', LucideIcons.building, context),
+          _buildBulletItem('Tax ID / GST Certificate', LucideIcons.fileText, context),
+          _buildBulletItem('Address Proof (Utility Bill / Rent Agreement)', LucideIcons.mapPin, context),
         ],
       ),
     );
   }
 
-  Widget _buildBulletItem(String text, IconData icon) {
+  Widget _buildBulletItem(String text, IconData icon, BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: const Color(0xFF6366F1)),
+          Icon(icon, size: 18, color: AppColors.primary),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(fontSize: 14, color: Color(0xFF475569), fontWeight: FontWeight.w500),
+              style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8), fontWeight: FontWeight.w500),
             ),
           ),
         ],
@@ -179,26 +184,26 @@ class DocumentVerificationScreen extends ConsumerWidget {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Uploaded Documents',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
-          ),
+        Text(
+          'Uploaded Documents',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Theme.of(context).colorScheme.onSurface),
+        ),
           const SizedBox(height: 24),
           Container(
             padding: const EdgeInsets.all(40),
             width: double.infinity,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).cardColor,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFF1F5F9)),
+              border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1)),
             ),
-            child: const Column(
+            child: Column(
               children: [
-                Icon(LucideIcons.fileX, size: 48, color: Color(0xFF94A3B8)),
-                SizedBox(height: 16),
+                Icon(LucideIcons.fileX, size: 48, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.2)),
+                const SizedBox(height: 16),
                 Text(
                   'No documents uploaded yet',
-                  style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4), fontWeight: FontWeight.w600),
                 ),
               ],
             ),
@@ -210,9 +215,9 @@ class DocumentVerificationScreen extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Uploaded Documents',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Theme.of(context).colorScheme.onSurface),
         ),
         const SizedBox(height: 24),
         GridView.builder(
@@ -232,19 +237,20 @@ class DocumentVerificationScreen extends ConsumerWidget {
   }
 
   Widget _buildDocCard(BuildContext context, Map<String, dynamic> doc) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
-        boxShadow: [
+        border: Border.all(color: theme.dividerColor.withOpacity(0.05)),
+        boxShadow: theme.brightness == Brightness.light ? [
           BoxShadow(
-            color: Colors.black.withOpacity(0.01),
+            color: theme.colorScheme.onSurface.withOpacity(0.01),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
-        ],
+        ] : [],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -258,14 +264,14 @@ class DocumentVerificationScreen extends ConsumerWidget {
                   children: [
                     Text(
                       doc['type']!,
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
                     Text(
                       doc['name']!,
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),
+                      style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.4), fontWeight: FontWeight.w500),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -274,12 +280,12 @@ class DocumentVerificationScreen extends ConsumerWidget {
               ),
               Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFF6366F1).withOpacity(0.1),
+                  color: AppColors.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: IconButton(
                   onPressed: () => _viewDocument(context, doc['file'] as File, doc['type'] as String),
-                  icon: const Icon(LucideIcons.eye, size: 18, color: Color(0xFF6366F1)),
+                  icon: Icon(LucideIcons.eye, size: 18, color: AppColors.primary),
                   constraints: const BoxConstraints(),
                   padding: const EdgeInsets.all(8),
                 ),
@@ -287,28 +293,28 @@ class DocumentVerificationScreen extends ConsumerWidget {
             ],
           ),
           const Spacer(),
-          const Divider(height: 24, color: Color(0xFFF1F5F9)),
+          Divider(height: 24, color: theme.dividerColor.withOpacity(0.05)),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Uploaded: Just now',
-                style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8), fontWeight: FontWeight.w600),
+                style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurface.withOpacity(0.4), fontWeight: FontWeight.w600),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFFBEB),
+                  color: theme.brightness == Brightness.dark ? const Color(0xFF78350F).withOpacity(0.2) : const Color(0xFFFFFBEB),
                   borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: const Color(0xFFFDE68A).withOpacity(0.5)),
+                  border: Border.all(color: theme.brightness == Brightness.dark ? const Color(0xFFF59E0B).withOpacity(0.3) : const Color(0xFFFDE68A).withOpacity(0.5)),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(LucideIcons.clock, size: 10, color: Color(0xFFB45309)),
-                    SizedBox(width: 4),
+                    Icon(LucideIcons.clock, size: 10, color: theme.brightness == Brightness.dark ? const Color(0xFFF59E0B) : const Color(0xFFB45309)),
+                    const SizedBox(width: 4),
                     Text(
                       'Pending',
-                      style: TextStyle(color: Color(0xFFB45309), fontSize: 10, fontWeight: FontWeight.w800),
+                      style: TextStyle(color: theme.brightness == Brightness.dark ? const Color(0xFFF59E0B) : const Color(0xFFB45309), fontSize: 10, fontWeight: FontWeight.w800),
                     ),
                   ],
                 ),
@@ -342,7 +348,7 @@ class DocumentVerificationScreen extends ConsumerWidget {
               const SizedBox(height: 8),
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(16),
                 ),
                 padding: const EdgeInsets.all(16),
@@ -351,7 +357,7 @@ class DocumentVerificationScreen extends ConsumerWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Theme.of(context).colorScheme.onSurface),
                     ),
                     const SizedBox(height: 16),
                     ClipRRect(
@@ -368,7 +374,7 @@ class DocumentVerificationScreen extends ConsumerWidget {
                       child: ElevatedButton(
                         onPressed: () => Navigator.pop(context),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF6366F1),
+                          backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

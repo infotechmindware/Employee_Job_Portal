@@ -92,22 +92,23 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
       });
     }
 
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: theme.scaffoldBackgroundColor,
       endDrawer: _buildFilterDrawer(),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: theme.cardColor,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         automaticallyImplyLeading: false,
         title: Text(
           isJobSelected ? (_selectedJob!['title'] ?? 'Job Details') : 'All Candidates',
-          style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.w900, fontSize: 20, letterSpacing: -0.5),
+          style: TextStyle(color: theme.colorScheme.onSurface, fontWeight: FontWeight.w900, fontSize: 20, letterSpacing: -0.5),
         ),
         actions: [
           Builder(
             builder: (context) => IconButton(
-              icon: const Icon(LucideIcons.filter, color: Color(0xFF6366F1), size: 22),
+              icon: Icon(LucideIcons.filter, color: theme.primaryColor, size: 22),
               onPressed: () => Scaffold.of(context).openEndDrawer(),
             ),
           ),
@@ -115,7 +116,7 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
         ],
       ),
       body: employerState.when(
-        loading: () => const Center(child: CircularProgressIndicator(color: Color(0xFF6366F1))),
+        loading: () => Center(child: CircularProgressIndicator(color: theme.primaryColor)),
         error: (err, stack) => Center(child: Text('Error: $err')),
         data: (state) {
           final allApps = state.applications;
@@ -165,7 +166,7 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
 
           return RefreshIndicator(
             onRefresh: () => ref.read(employerJobsProvider.notifier).fetchAll(),
-            color: const Color(0xFF6366F1),
+            color: theme.primaryColor,
             child: Column(
               children: [
                 if (isJobSelected) 
@@ -177,7 +178,7 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
                   _buildDefaultHeader(),
                   
                 _buildTabSection(tabCounts),
-                const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                Divider(height: 1, color: theme.dividerColor.withOpacity(0.05)),
                 Expanded(
                   child: CustomScrollView(
                     slivers: [
@@ -199,13 +200,14 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
   }
 
   Widget _buildDefaultHeader() {
+    final theme = Theme.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
-      color: Colors.white,
-      child: const Text(
+      color: theme.cardColor,
+      child: Text(
         'Manage and review all job applications',
-        style: TextStyle(fontSize: 13, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+        style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withOpacity(0.6), fontWeight: FontWeight.w500),
       ),
     );
   }
@@ -217,11 +219,12 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
     final exp = "${job?['experience'] ?? 'Any'} Exp";
     final education = job?['education'] ?? 'Any Education';
     
+    final theme = Theme.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
-      decoration: const BoxDecoration(
-        color: Colors.white,
+      decoration: BoxDecoration(
+        color: theme.cardColor,
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -241,27 +244,30 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
   }
 
   Widget _buildHeaderInfo(IconData icon, String label) {
+    final theme = Theme.of(context);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 12, color: const Color(0xFF94A3B8)),
+        Icon(icon, size: 12, color: theme.colorScheme.onSurface.withOpacity(0.4)),
         const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
+        Text(label, style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurface.withOpacity(0.6), fontWeight: FontWeight.w600)),
       ],
     );
   }
 
   Widget _buildHeaderDivider() {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Container(width: 4, height: 4, decoration: const BoxDecoration(color: Color(0xFFE2E8F0), shape: BoxShape.circle)),
+      child: Container(width: 4, height: 4, decoration: BoxDecoration(color: theme.dividerColor.withOpacity(0.1), shape: BoxShape.circle)),
     );
   }
 
   Widget _buildFilterDrawer() {
+    final theme = Theme.of(context);
     return Drawer(
       width: MediaQuery.of(context).size.width * 0.90,
-      backgroundColor: Colors.white,
+      backgroundColor: theme.cardColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.horizontal(left: Radius.circular(32)),
       ),
@@ -272,20 +278,20 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
             Container(
               padding: const EdgeInsets.fromLTRB(24, 20, 16, 16),
               decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border(bottom: BorderSide(color: const Color(0xFFF1F5F9), width: 1)),
+                color: theme.cardColor,
+                border: Border(bottom: BorderSide(color: theme.dividerColor.withOpacity(0.1), width: 1)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  Text(
                     'All Filters',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF0F172A), letterSpacing: -0.5),
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: theme.colorScheme.onSurface, letterSpacing: -0.5),
                   ),
                   TextButton(
                     onPressed: _clearFilters,
                     style: TextButton.styleFrom(
-                      foregroundColor: const Color(0xFF6366F1),
+                      foregroundColor: theme.primaryColor,
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
                     ),
@@ -352,23 +358,23 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
             Container(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
               decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
+                color: theme.cardColor,
+                boxShadow: theme.brightness == Brightness.light ? [
                   BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 20, offset: const Offset(0, -4)),
-                ],
+                ] : [],
               ),
               child: Container(
                 width: double.infinity,
                 height: 58,
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF6366F1), Color(0xFF818CF8)],
+                  gradient: LinearGradient(
+                    colors: [AppColors.primary, AppColors.primary.withOpacity(0.8)],
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
                   ),
                   borderRadius: BorderRadius.circular(18),
                   boxShadow: [
-                    BoxShadow(color: const Color(0xFF6366F1).withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 6)),
+                    BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 6)),
                   ],
                 ),
                 child: ElevatedButton(
@@ -400,36 +406,38 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
   }
 
   Widget _buildFilterSection(String title, Widget content) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0F172A), letterSpacing: -0.2)),
+        Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface, letterSpacing: -0.2)),
         const SizedBox(height: 16),
         content,
         const SizedBox(height: 32),
-        const Divider(height: 1, color: Color(0xFFF1F5F9)),
+        Divider(height: 1, color: theme.dividerColor.withOpacity(0.05)),
         const SizedBox(height: 24),
       ],
     );
   }
 
   Widget _buildModernTextField(String hint, IconData icon, Function(String) onChanged) {
+    final theme = Theme.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
-        boxShadow: [
-          BoxShadow(color: const Color(0xFF0F172A).withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 4)),
-        ],
+        border: Border.all(color: theme.dividerColor.withOpacity(0.1), width: 1.5),
+        boxShadow: theme.brightness == Brightness.light ? [
+          BoxShadow(color: theme.colorScheme.onSurface.withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 4)),
+        ] : [],
       ),
       child: TextField(
         onChanged: onChanged,
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
+        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: const TextStyle(fontSize: 14, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),
-          prefixIcon: Icon(icon, size: 18, color: const Color(0xFF6366F1)),
+          hintStyle: TextStyle(fontSize: 14, color: theme.colorScheme.onSurface.withOpacity(0.4), fontWeight: FontWeight.w500),
+          prefixIcon: const Icon(LucideIcons.search, size: 18, color: AppColors.primary),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         ),
@@ -438,50 +446,52 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
   }
 
   Widget _buildModernChip(String label, bool isSelected, Function(bool) onSelected) {
+    final theme = Theme.of(context);
     return FilterChip(
       label: Text(label),
       selected: isSelected,
       onSelected: onSelected,
       labelStyle: TextStyle(
-        color: isSelected ? Colors.white : const Color(0xFF475569),
+        color: isSelected ? Colors.white : theme.colorScheme.onSurface.withOpacity(0.6),
         fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
         fontSize: 13,
       ),
-      backgroundColor: Colors.white,
-      selectedColor: const Color(0xFF6366F1),
+      backgroundColor: theme.cardColor,
+      selectedColor: AppColors.primary,
       checkmarkColor: Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(100),
         side: BorderSide(
-          color: isSelected ? const Color(0xFF6366F1) : const Color(0xFFE2E8F0),
+          color: isSelected ? AppColors.primary : theme.dividerColor.withOpacity(0.1),
           width: 1.5,
         ),
       ),
       elevation: isSelected ? 4 : 0,
-      shadowColor: const Color(0xFF6366F1).withOpacity(0.2),
+      shadowColor: AppColors.primary.withOpacity(0.2),
       showCheckmark: false,
     );
   }
 
   Widget _buildChoiceChip(String label, bool isSelected, Function(bool) onSelected) {
+    final theme = Theme.of(context);
     return InkWell(
       onTap: () => onSelected(!isSelected),
       borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF6366F1).withOpacity(0.1) : Colors.white,
+          color: isSelected ? AppColors.primary.withOpacity(0.1) : theme.cardColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? const Color(0xFF6366F1) : const Color(0xFFE2E8F0),
+            color: isSelected ? AppColors.primary : theme.dividerColor.withOpacity(0.1),
             width: isSelected ? 1.5 : 1.0,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? const Color(0xFF6366F1) : const Color(0xFF64748B),
+            color: isSelected ? AppColors.primary : theme.colorScheme.onSurface.withOpacity(0.6),
             fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
             fontSize: 12,
           ),
@@ -497,9 +507,10 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
       return _buildJobStatsSection(tabCounts);
     }
 
+    final theme = Theme.of(context);
     return Container(
       width: double.infinity,
-      color: Colors.white,
+      color: theme.cardColor,
       height: 52,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
@@ -521,15 +532,15 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFF6366F1) : const Color(0xFFF8FAFC),
+                  color: isSelected ? AppColors.primary : theme.brightness == Brightness.light ? const Color(0xFFF8FAFC) : theme.scaffoldBackgroundColor.withOpacity(0.5),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: isSelected ? const Color(0xFF6366F1) : const Color(0xFFE2E8F0),
+                    color: isSelected ? AppColors.primary : theme.dividerColor.withOpacity(0.1),
                     width: 1,
                   ),
                   boxShadow: isSelected ? [
                     BoxShadow(
-                      color: const Color(0xFF6366F1).withOpacity(0.2),
+                      color: AppColors.primary.withOpacity(0.2),
                       blurRadius: 8,
                       offset: const Offset(0, 4),
                     )
@@ -541,7 +552,7 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
                     Text(
                       _tabs[index],
                       style: TextStyle(
-                        color: isSelected ? Colors.white : const Color(0xFF475569),
+                        color: isSelected ? Colors.white : theme.colorScheme.onSurface.withOpacity(0.6),
                         fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
                         fontSize: 13,
                       ),
@@ -550,7 +561,7 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: isSelected ? Colors.white.withOpacity(0.2) : const Color(0xFFE2E8F0),
+                        color: isSelected ? Colors.white.withOpacity(0.2) : theme.dividerColor.withOpacity(0.05),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -558,7 +569,7 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
-                          color: isSelected ? Colors.white : const Color(0xFF64748B),
+                          color: isSelected ? Colors.white : theme.colorScheme.onSurface.withOpacity(0.4),
                         ),
                       ),
                     ),
@@ -576,15 +587,16 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
     final responses = tabCounts['All'] ?? 0;
     final hotLeads = tabCounts['Shortlist'] ?? 0;
     
+    final theme = Theme.of(context);
     return Container(
       width: double.infinity,
-      color: Colors.white,
+      color: theme.cardColor,
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
       child: Column(
         children: [
           Row(
             children: [
-              _buildStatCard('Responses', responses.toString(), LucideIcons.messageSquare, const Color(0xFF6366F1)),
+              _buildStatCard('Responses', responses.toString(), LucideIcons.messageSquare, AppColors.primary),
               const SizedBox(width: 12),
               _buildStatCard('Hot Leads', hotLeads.toString(), LucideIcons.zap, const Color(0xFFF59E0B)),
             ],
@@ -603,20 +615,21 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
   }
 
   Widget _buildStatCard(String label, String count, IconData icon, Color color) {
+    final theme = Theme.of(context);
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: theme.cardColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
-          boxShadow: [
+          border: Border.all(color: theme.dividerColor.withOpacity(0.1), width: 1.5),
+          boxShadow: theme.brightness == Brightness.light ? [
             BoxShadow(
-              color: const Color(0xFF0F172A).withOpacity(0.02),
+              color: theme.colorScheme.onSurface.withOpacity(0.02),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
-          ],
+          ] : [],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -634,14 +647,14 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
                 ),
                 Text(
                   count,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF0F172A), letterSpacing: -0.5),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: theme.colorScheme.onSurface, letterSpacing: -0.5),
                 ),
               ],
             ),
             const SizedBox(height: 12),
             Text(
               label,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF64748B)),
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: theme.colorScheme.onSurface.withOpacity(0.6)),
             ),
           ],
         ),
@@ -683,32 +696,33 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
   }
 
   Widget _buildFilterButton(String label, IconData icon, VoidCallback onTap) {
+    final theme = Theme.of(context);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(14),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: theme.cardColor,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
-          boxShadow: [
+          border: Border.all(color: theme.dividerColor.withOpacity(0.1), width: 1),
+          boxShadow: theme.brightness == Brightness.light ? [
             BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 4, offset: const Offset(0, 2)),
-          ],
+          ] : [],
         ),
         child: Row(
           children: [
-            Icon(icon, size: 14, color: const Color(0xFF6366F1)),
+            Icon(icon, size: 14, color: theme.primaryColor),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF475569)),
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface.withOpacity(0.7)),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            const Icon(LucideIcons.chevronDown, size: 14, color: Color(0xFF94A3B8)),
+            Icon(LucideIcons.chevronDown, size: 14, color: theme.colorScheme.onSurface.withOpacity(0.3)),
           ],
         ),
       ),
@@ -717,26 +731,27 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
 
 
   Widget _buildSearchInput() {
+    final theme = Theme.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
-        boxShadow: [
-          BoxShadow(color: const Color(0xFF0F172A).withOpacity(0.03), blurRadius: 15, offset: const Offset(0, 5)),
-        ],
+        border: Border.all(color: theme.dividerColor.withOpacity(0.1), width: 1),
+        boxShadow: theme.brightness == Brightness.light ? [
+          BoxShadow(color: theme.colorScheme.onSurface.withOpacity(0.03), blurRadius: 15, offset: const Offset(0, 5)),
+        ] : [],
       ),
       child: TextField(
         controller: _searchController,
         onChanged: (val) => setState(() {}),
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
+        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface),
         decoration: InputDecoration(
           hintText: 'Search by name, email, or skills...',
-          hintStyle: const TextStyle(fontSize: 14, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),
-          prefixIcon: const Icon(LucideIcons.search, size: 18, color: Color(0xFF6366F1)),
+          hintStyle: TextStyle(fontSize: 14, color: theme.colorScheme.onSurface.withOpacity(0.4), fontWeight: FontWeight.w500),
+          prefixIcon: const Icon(LucideIcons.search, size: 18, color: AppColors.primary),
           suffixIcon: _searchController.text.isNotEmpty 
             ? IconButton(
-                icon: const Icon(Icons.close, size: 18, color: Color(0xFF94A3B8)),
+                icon: Icon(Icons.close, size: 18, color: theme.colorScheme.onSurface.withOpacity(0.4)),
                 onPressed: () { _searchController.clear(); setState(() {}); },
               )
             : null,
@@ -748,28 +763,40 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
   }
 
   Widget _buildUpgradeSection() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: const Color(0xFFFFFBEB), borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFFEF3C7))),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF451A03).withOpacity(0.3) : const Color(0xFFFFFBEB),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isDark ? const Color(0xFFD97706).withOpacity(0.2) : const Color(0xFFFEF3C7)),
+      ),
       child: Row(
         children: [
           const Icon(LucideIcons.sparkles, color: Color(0xFFD97706), size: 20),
           const SizedBox(width: 12),
-          const Expanded(child: Text('Upgrade to unlock contact details', style: TextStyle(color: Color(0xFF92400E), fontWeight: FontWeight.w700, fontSize: 13))),
-          TextButton(onPressed: () {}, child: const Text('UPGRADE', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: Color(0xFFD97706)))),
+          Expanded(child: Text('Upgrade to unlock contact details', style: TextStyle(color: isDark ? const Color(0xFFFDE68A) : const Color(0xFF92400E), fontWeight: FontWeight.w700, fontSize: 13))),
+          TextButton(
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionPlansScreen()));
+            },
+            child: const Text('UPGRADE', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: Color(0xFFD97706))),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildEmptyState() {
+    final theme = Theme.of(context);
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(LucideIcons.users, size: 64, color: const Color(0xFFE2E8F0)),
+        Icon(LucideIcons.users, size: 64, color: theme.dividerColor.withOpacity(0.1)),
         const SizedBox(height: 16),
-        const Text('No candidates found', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF64748B))),
+        Text('No candidates found', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface.withOpacity(0.4))),
       ],
     );
   }
@@ -796,36 +823,49 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).cardColor,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
       builder: (context) => _CandidatePreviewModal(app: app),
     );
   }
 
   void _showJobPicker() {
+    final theme = Theme.of(context);
     showModalBottomSheet(
       context: context,
+      backgroundColor: theme.cardColor,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (context) => ListView(
         shrinkWrap: true,
         padding: const EdgeInsets.all(24),
         children: [
-          const Text('Select Job', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+          Text('Select Job', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: theme.colorScheme.onSurface)),
           const SizedBox(height: 16),
-          ListTile(title: const Text('All Jobs'), onTap: () { setState(() => _selectedJob = null); _fetchApplications(); Navigator.pop(context); }),
-          ..._jobs.map((j) => ListTile(title: Text(j['title']), onTap: () { setState(() => _selectedJob = j); _fetchApplications(); Navigator.pop(context); })),
+          ListTile(
+            title: Text('All Jobs', style: TextStyle(color: theme.colorScheme.onSurface, fontWeight: FontWeight.w600)),
+            onTap: () { setState(() => _selectedJob = null); _fetchApplications(); Navigator.pop(context); }
+          ),
+          ..._jobs.map((j) => ListTile(
+            title: Text(j['title'], style: TextStyle(color: theme.colorScheme.onSurface, fontWeight: FontWeight.w600)),
+            onTap: () { setState(() => _selectedJob = j); _fetchApplications(); Navigator.pop(context); }
+          )),
         ],
       ),
     );
   }
 
   void _showSortPicker() {
+    final theme = Theme.of(context);
     showModalBottomSheet(
       context: context,
+      backgroundColor: theme.cardColor,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (context) => Column(
         mainAxisSize: MainAxisSize.min,
-        children: ['Newest Applied', 'Best Match', 'Status'].map((opt) => ListTile(title: Text(opt), onTap: () => Navigator.pop(context))).toList(),
+        children: ['Newest Applied', 'Best Match', 'Status'].map((opt) => ListTile(
+          title: Text(opt, style: TextStyle(color: theme.colorScheme.onSurface, fontWeight: FontWeight.w600)),
+          onTap: () => Navigator.pop(context)
+        )).toList(),
       ),
     );
   }
@@ -865,15 +905,18 @@ class _CandidateCard extends StatelessWidget {
       imageUrl = "https://www.mindwareinfotech.com$imageUrl";
     }
 
+    final theme = Theme.of(context);
     return InkWell(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: theme.cardColor,
           borderRadius: BorderRadius.circular(24),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 10))],
-          border: Border.all(color: const Color(0xFFF1F5F9)),
+          boxShadow: theme.brightness == Brightness.light ? [
+            BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 10))
+          ] : [],
+          border: Border.all(color: theme.dividerColor.withOpacity(0.05)),
         ),
         child: Column(
           children: [
@@ -888,17 +931,17 @@ class _CandidateCard extends StatelessWidget {
                           imageUrl: imageUrl,
                           fit: BoxFit.cover,
                           placeholder: (context, url) => Container(
-                            color: const Color(0xFFF1F5F9),
-                            child: const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF6366F1))),
+                            color: theme.dividerColor.withOpacity(0.05),
+                            child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: theme.primaryColor)),
                           ),
                           errorWidget: (context, url, error) => Container(
-                            color: const Color(0xFFF1F5F9),
-                            child: Center(child: Text(name[0].toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF6366F1)))),
+                            color: theme.dividerColor.withOpacity(0.05),
+                            child: Center(child: Text(name[0].toUpperCase(), style: TextStyle(fontWeight: FontWeight.w900, color: theme.primaryColor))),
                           ),
                         )
                       : Container(
-                          color: const Color(0xFFF1F5F9),
-                          child: Center(child: Text(name[0].toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF6366F1)))),
+                          color: theme.dividerColor.withOpacity(0.05),
+                          child: Center(child: Text(name[0].toUpperCase(), style: TextStyle(fontWeight: FontWeight.w900, color: theme.primaryColor))),
                         ),
                   ),
                 ),
@@ -910,32 +953,35 @@ class _CandidateCard extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Expanded(child: Text(name, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Color(0xFF0F172A)))),
+                          Expanded(child: Text(name, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: theme.colorScheme.onSurface))),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(color: const Color(0xFFF0FDF4), borderRadius: BorderRadius.circular(8)),
-                            child: Text('$match%', style: const TextStyle(color: Color(0xFF166534), fontSize: 10, fontWeight: FontWeight.w900)),
+                            decoration: BoxDecoration(
+                              color: theme.brightness == Brightness.light ? const Color(0xFFF0FDF4) : const Color(0xFF064E3B),
+                              borderRadius: BorderRadius.circular(8)
+                            ),
+                            child: Text('$match%', style: TextStyle(color: theme.brightness == Brightness.light ? const Color(0xFF10B981) : const Color(0xFF34D399), fontSize: 10, fontWeight: FontWeight.w900)),
                           ),
                         ],
                       ),
-                      Text(jobTitle, style: const TextStyle(fontSize: 13, color: Color(0xFF6366F1), fontWeight: FontWeight.w700)),
+                      Text(jobTitle, style: TextStyle(fontSize: 13, color: theme.primaryColor, fontWeight: FontWeight.w700)),
                       const SizedBox(height: 2),
-                      Text("$experience Experience • $location", style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
+                      Text("$experience Experience • $location", style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.5), fontWeight: FontWeight.w600)),
                     ],
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            const Divider(height: 1, color: Color(0xFFF1F5F9)),
+            Divider(height: 1, color: theme.dividerColor.withOpacity(0.05)),
             const SizedBox(height: 16),
             Row(
               children: [
-                _buildAction(LucideIcons.messageSquare, 'Message', const Color(0xFF64748B)),
+                _buildAction(context, LucideIcons.messageSquare, 'Message', theme.colorScheme.onSurface.withOpacity(0.5)),
                 const SizedBox(width: 8),
-                _buildAction(LucideIcons.phone, 'WhatsApp', const Color(0xFF25D366)),
+                _buildAction(context, LucideIcons.phone, 'WhatsApp', const Color(0xFF22C55E)),
                 const SizedBox(width: 8),
-                _buildAction(LucideIcons.stickyNote, 'Note', const Color(0xFF6366F1)),
+                _buildAction(context, LucideIcons.stickyNote, 'Note', theme.primaryColor),
               ],
             ),
           ],
@@ -944,11 +990,16 @@ class _CandidateCard extends StatelessWidget {
     );
   }
 
-  Widget _buildAction(IconData icon, String label, Color color) {
+  Widget _buildAction(BuildContext context, IconData icon, String label, Color color) {
+    final theme = Theme.of(context);
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(color: color.withOpacity(0.05), borderRadius: BorderRadius.circular(12), border: Border.all(color: color.withOpacity(0.1))),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.05), 
+          borderRadius: BorderRadius.circular(12), 
+          border: Border.all(color: color.withOpacity(0.1))
+        ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -968,6 +1019,7 @@ class _CandidatePreviewModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final candidate = app['candidate'] ?? {};
     final name = candidate['full_name'] ?? app['full_name'] ?? "Candidate";
     
@@ -992,25 +1044,39 @@ class _CandidatePreviewModal extends StatelessWidget {
         controller: scrollController,
         padding: const EdgeInsets.all(24),
         children: [
-          Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: const Color(0xFFE2E8F0), borderRadius: BorderRadius.circular(2)))),
+          Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: theme.dividerColor.withOpacity(0.1), borderRadius: BorderRadius.circular(2)))),
           const SizedBox(height: 24),
-          Text(name, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
+          Text(name, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: theme.colorScheme.onSurface)),
           const SizedBox(height: 32),
-          _buildDetailRow(LucideIcons.mail, 'Email', candidate['email'] ?? 'Not provided'),
-          _buildDetailRow(LucideIcons.phone, 'Phone', candidate['phone'] ?? 'Not provided'),
-          _buildDetailRow(LucideIcons.mapPin, 'Location', location),
-          _buildDetailRow(LucideIcons.briefcase, 'Experience', "${candidate['experience'] ?? '0'} Years"),
+          _buildDetailRow(context, LucideIcons.mail, 'Email', candidate['email'] ?? 'Not provided'),
+          _buildDetailRow(context, LucideIcons.phone, 'Phone', candidate['phone'] ?? 'Not provided'),
+          _buildDetailRow(context, LucideIcons.mapPin, 'Location', location),
+          _buildDetailRow(context, LucideIcons.briefcase, 'Experience', "${candidate['experience'] ?? '0'} Years"),
           const SizedBox(height: 32),
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => CandidateDetailsScreen(candidate: app)));
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6366F1), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-              child: const Text('View Full Application', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [AppColors.primary, AppColors.primary.withOpacity(0.8)]),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 6)),
+                  ],
+                ),
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => CandidateDetailsScreen(candidate: app)));
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  foregroundColor: Colors.white,
+                  shadowColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                child: const Text('View Full Application', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+              ),
             ),
           ),
         ],
@@ -1018,18 +1084,19 @@ class _CandidatePreviewModal extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailRow(IconData icon, String label, String value) {
+  Widget _buildDetailRow(BuildContext context, IconData icon, String label, String value) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: const Color(0xFF94A3B8)),
+          Icon(icon, size: 20, color: theme.colorScheme.onSurface.withOpacity(0.3)),
           const SizedBox(width: 16),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8), fontWeight: FontWeight.w700)),
-              Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF1E293B))),
+              Text(label, style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.4), fontWeight: FontWeight.w700)),
+              Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface)),
             ],
           ),
         ],

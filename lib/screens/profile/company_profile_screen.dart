@@ -54,7 +54,7 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
     final isDesktop = screenWidth > 1024;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SingleChildScrollView(
         physics: const ClampingScrollPhysics(),
         padding: EdgeInsets.all(isDesktop ? 32 : 16),
@@ -82,7 +82,8 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
   }
 
   Widget _buildHeader(bool isDesktop) {
-    return const Column(
+    final theme = Theme.of(context);
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
@@ -90,16 +91,16 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
           style: TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.w800,
-            color: Color(0xFF1E293B),
+            color: theme.colorScheme.onSurface,
             letterSpacing: -1,
           ),
         ),
-        SizedBox(height: 4),
+        const SizedBox(height: 4),
         Text(
           'Manage your public brand and company details',
           style: TextStyle(
             fontSize: 14,
-            color: Color(0xFF64748B),
+            color: theme.colorScheme.onSurface.withOpacity(0.6),
             fontWeight: FontWeight.w400,
           ),
         ),
@@ -127,15 +128,16 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
       itemCount: stats.length,
       itemBuilder: (context, index) {
         final stat = stats[index];
+        final theme = Theme.of(context);
         return Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: theme.cardColor,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFF1F5F9)),
-            boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
-            ],
+            border: Border.all(color: theme.dividerColor.withOpacity(0.05)),
+            boxShadow: theme.brightness == Brightness.light ? [
+              BoxShadow(color: theme.colorScheme.onSurface.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
+            ] : [],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -147,14 +149,14 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
                   const SizedBox(width: 8),
                   Text(
                     stat['label'] as String,
-                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF64748B)),
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: theme.colorScheme.onSurface.withOpacity(0.4)),
                   ),
                 ],
               ),
               const SizedBox(height: 8),
               Text(
                 stat['value'] as String,
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface),
               ),
             ],
           ),
@@ -223,23 +225,24 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
                 Expanded(
                   child: TextField(
                     controller: _whyJoinControllers[index],
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
                     decoration: InputDecoration(
                       hintText: 'e.g., Great work-life balance',
-                      hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+                      hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4), fontSize: 14),
                       contentPadding: const EdgeInsets.all(16),
                       filled: true,
-                      fillColor: const Color(0xFFF8FAFC),
+                      fillColor: Theme.of(context).brightness == Brightness.light ? Theme.of(context).dividerColor.withOpacity(0.03) : Theme.of(context).scaffoldBackgroundColor.withOpacity(0.5),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                        borderSide: BorderSide(color: Theme.of(context).dividerColor.withOpacity(0.1)),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                        borderSide: BorderSide(color: Theme.of(context).dividerColor.withOpacity(0.1)),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
+                        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
                       ),
                     ),
                   ),
@@ -304,26 +307,27 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
   }
 
   Widget _buildEmptySection(String title, IconData icon, String msg) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        border: Border.all(color: theme.dividerColor.withOpacity(0.1)),
       ),
       child: Column(
         children: [
           Row(
             children: [
-              Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF1E293B))),
+              Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface)),
               const Spacer(),
-              const Icon(LucideIcons.chevronRight, size: 16, color: Color(0xFF94A3B8)),
+              Icon(LucideIcons.chevronRight, size: 16, color: theme.colorScheme.onSurface.withOpacity(0.4)),
             ],
           ),
           const SizedBox(height: 24),
-          Icon(icon, size: 32, color: const Color(0xFFE2E8F0)),
+          Icon(icon, size: 32, color: theme.dividerColor.withOpacity(0.1)),
           const SizedBox(height: 12),
-          Text(msg, textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+          Text(msg, textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.4))),
         ],
       ),
     );
@@ -335,15 +339,16 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
     required List<Widget> children,
     Widget? headerAction,
   }) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 15, offset: const Offset(0, 8)),
-        ],
+        border: Border.all(color: theme.dividerColor.withOpacity(0.1)),
+        boxShadow: theme.brightness == Brightness.light ? [
+          BoxShadow(color: theme.colorScheme.onSurface.withOpacity(0.02), blurRadius: 15, offset: const Offset(0, 8)),
+        ] : [],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -355,7 +360,7 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Theme.of(context).colorScheme.onSurface),
                 ),
               ),
               if (headerAction != null) headerAction,
@@ -369,30 +374,32 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
   }
 
   Widget _buildField(String label, String hint, {int maxLines = 1}) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF475569))),
+        Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: theme.colorScheme.onSurface.withOpacity(0.7))),
         const SizedBox(height: 8),
         TextField(
           maxLines: maxLines,
+          style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 14),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+            hintStyle: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.4), fontSize: 14),
             contentPadding: const EdgeInsets.all(16),
             filled: true,
-            fillColor: const Color(0xFFF8FAFC),
+            fillColor: theme.brightness == Brightness.light ? theme.dividerColor.withOpacity(0.03) : theme.scaffoldBackgroundColor.withOpacity(0.5),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+              borderSide: BorderSide(color: theme.dividerColor.withOpacity(0.1)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+              borderSide: BorderSide(color: theme.dividerColor.withOpacity(0.1)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
+              borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
             ),
           ),
         ),
@@ -401,31 +408,32 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
   }
 
   Widget _buildDropdown(String label, String? value, String placeholder, List<String> items, ValueChanged<String?> onChanged) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w700,
-            color: Color(0xFF475569),
+            color: theme.colorScheme.onSurface.withOpacity(0.7),
             letterSpacing: 0.2,
           ),
         ),
         const SizedBox(height: 10),
         Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: theme.cardColor,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
-            boxShadow: [
+            border: Border.all(color: theme.dividerColor.withOpacity(0.1), width: 1.5),
+            boxShadow: theme.brightness == Brightness.light ? [
               BoxShadow(
-                color: const Color(0xFF64748B).withOpacity(0.05),
+                color: theme.colorScheme.onSurface.withOpacity(0.05),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
-            ],
+            ] : [],
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
@@ -433,21 +441,20 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
               isExpanded: true,
               hint: Text(
                 placeholder,
-                style: const TextStyle(fontSize: 14, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),
+                style: TextStyle(fontSize: 14, color: theme.colorScheme.onSurface.withOpacity(0.4), fontWeight: FontWeight.w500),
               ),
               icon: Container(
                 margin: const EdgeInsets.only(right: 8),
-                child: const Icon(LucideIcons.chevronDown, size: 18, color: Color(0xFF64748B)),
+                child: Icon(LucideIcons.chevronDown, size: 18, color: theme.colorScheme.onSurface.withOpacity(0.4)),
               ),
-              dropdownColor: Colors.white,
+              dropdownColor: theme.cardColor,
               borderRadius: BorderRadius.circular(12),
               elevation: 8,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
-                color: Color(0xFF1E293B),
+                color: theme.colorScheme.onSurface,
                 fontWeight: FontWeight.w600,
-                fontFamily: 'Inter',
               ),
               items: items.map((v) => DropdownMenuItem(
                 value: v,
@@ -455,9 +462,9 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   child: Text(
                     v,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
-                      color: Color(0xFF1E293B),
+                      color: theme.colorScheme.onSurface,
                       fontWeight: FontWeight.w500,
                     ),
                   ),

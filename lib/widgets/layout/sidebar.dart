@@ -32,14 +32,19 @@ class _SidebarState extends ConsumerState<Sidebar> {
     final activeIndex = navState.activeIndex;
     final data = dashboardAsync.value;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFF7C3AED), // Violet 600
-            Color(0xFF6366F1), // Indigo 500
+          colors: isDark ? [
+            const Color(0xFF1E1B4B), // Very Dark Blue
+            const Color(0xFF0F172A), // Slate 900
+          ] : [
+            const Color(0xFF7C3AED), // Violet 600
+            const Color(0xFF6366F1), // Indigo 500
           ],
         ),
       ),
@@ -92,6 +97,7 @@ class _SidebarState extends ConsumerState<Sidebar> {
   }
 
   Widget _buildBrandHeader(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
@@ -99,10 +105,10 @@ class _SidebarState extends ConsumerState<Sidebar> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: isDark ? Colors.white.withOpacity(0.1) : Colors.white,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(LucideIcons.menu, size: 28, color: Color(0xFF6366F1)),
+            child: Icon(LucideIcons.menu, size: 28, color: isDark ? Colors.white : const Color(0xFF6366F1)),
           ),
           if (!widget.isCollapsed) ...[
             const SizedBox(width: 16),
@@ -129,32 +135,33 @@ class _SidebarState extends ConsumerState<Sidebar> {
   }
 
   Widget _buildCreateNewButton() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
         width: double.infinity,
         height: 52,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? Colors.white.withOpacity(0.1) : Colors.white,
           borderRadius: BorderRadius.circular(12),
-          boxShadow: [
+          boxShadow: isDark ? [] : [
             BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4)),
           ],
         ),
         child: InkWell(
           onTap: () {},
           borderRadius: BorderRadius.circular(12),
-          child: const Row(
+          child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(LucideIcons.plus, size: 20, color: Color(0xFF6366F1)),
-              SizedBox(width: 10),
+              Icon(LucideIcons.plus, size: 20, color: isDark ? Colors.white : const Color(0xFF6366F1)),
+              const SizedBox(width: 10),
               Text(
                 'Create New',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF6366F1),
+                  color: isDark ? Colors.white : const Color(0xFF6366F1),
                 ),
               ),
             ],

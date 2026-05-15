@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../theme/app_colors.dart';
 import '../../services/chat_service.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'chat_detail_screen.dart';
 
 class MessagingScreen extends StatefulWidget {
@@ -54,13 +55,6 @@ class _MessagingScreenState extends State<MessagingScreen> {
     
     // 2. Background fetch from API
     _fetchConversations();
-    
-    // 3. Set a timer for fallback message if loading takes > 3s
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted && _isLoading && _conversations.isEmpty) {
-        setState(() => _showSlowLoadingMessage = true);
-      }
-    });
   }
 
   Future<void> _loadFromCache() async {
@@ -92,6 +86,25 @@ class _MessagingScreenState extends State<MessagingScreen> {
     }
   }
 
+  Future<void> _preFetchMessages(List<dynamic> topChats) async {
+    for (var chat in topChats) {
+      final String? chatId = chat['id']?.toString();
+      if (chatId != null) {
+        try {
+          final response = await ChatService.getMessages(chatId);
+          if (response['success']) {
+            final List<dynamic> messages = response['data']['messages'] ?? [];
+            // Save to cache using the same key format as ChatDetailScreen
+            final prefs = await SharedPreferences.getInstance();
+            // We reverse it here because ChatDetailScreen expects reversed messages for its reverse: true ListView
+            final reversedMessages = List.from(messages.reversed);
+            await prefs.setString('cached_messages_$chatId', jsonEncode(reversedMessages));
+          }
+        } catch (_) {}
+      }
+    }
+  }
+
   Future<void> _fetchConversations({bool isBackground = false}) async {
     if (!mounted) return;
     
@@ -114,6 +127,9 @@ class _MessagingScreenState extends State<MessagingScreen> {
             _showSlowLoadingMessage = false;
           });
           _saveToCache(newConversations);
+          
+          // 3. Pre-fetch messages for top conversations for "instant" open feel
+          _preFetchMessages(newConversations.take(5).toList());
         } else if (!isBackground) {
           setState(() {
             if (_conversations.isEmpty) _errorMessage = response['message'];
@@ -149,15 +165,15 @@ class _MessagingScreenState extends State<MessagingScreen> {
     final isDesktop = screenWidth > 1024;
     
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Row(
         children: [
           // Chat List Sidebar
           Container(
             width: isDesktop ? 400 : screenWidth,
             decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border(right: BorderSide(color: Colors.grey.shade200, width: 1)),
+              color: Theme.of(context).cardColor,
+              border: Border(right: BorderSide(color: Theme.of(context).dividerColor.withOpacity(0.1), width: 1)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -208,16 +224,16 @@ class _MessagingScreenState extends State<MessagingScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
               decoration: BoxDecoration(
-                color: const Color(0xFF1E293B),
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.9),
                 borderRadius: BorderRadius.circular(30),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
-                  SizedBox(width: 12),
-                  Text("Refreshing conversations...", style: TextStyle(color: Colors.white, fontSize: 12)),
+                  SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).cardColor)),
+                  const SizedBox(width: 12),
+                  Text("Refreshing conversations...", style: TextStyle(color: Theme.of(context).cardColor, fontSize: 12)),
                 ],
               ),
             ),
@@ -237,16 +253,16 @@ class _MessagingScreenState extends State<MessagingScreen> {
             Container(
               width: 48,
               height: 48,
-              decoration: const BoxDecoration(color: Color(0xFFF1F5F9), shape: BoxShape.circle),
+              decoration: BoxDecoration(color: Theme.of(context).dividerColor.withOpacity(0.1), shape: BoxShape.circle),
             ),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(width: 100, height: 14, decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(4))),
+                  Container(width: 100, height: 14, decoration: BoxDecoration(color: Theme.of(context).dividerColor.withOpacity(0.1), borderRadius: BorderRadius.circular(4))),
                   const SizedBox(height: 8),
-                  Container(width: double.infinity, height: 12, decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(4))),
+                  Container(width: double.infinity, height: 12, decoration: BoxDecoration(color: Theme.of(context).dividerColor.withOpacity(0.05), borderRadius: BorderRadius.circular(4))),
                 ],
               ),
             ),
@@ -257,13 +273,14 @@ class _MessagingScreenState extends State<MessagingScreen> {
   }
 
   Widget _buildErrorState() {
+    final theme = Theme.of(context);
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(LucideIcons.alertCircle, size: 40, color: Colors.redAccent),
+          Icon(LucideIcons.alertCircle, size: 40, color: theme.colorScheme.error),
           const SizedBox(height: 16),
-          Text(_errorMessage ?? "Failed to load chats", style: const TextStyle(fontSize: 14)),
+          Text(_errorMessage ?? "Failed to load chats", style: TextStyle(fontSize: 14, color: theme.colorScheme.onSurface)),
           const SizedBox(height: 16),
           ElevatedButton(onPressed: _fetchConversations, child: const Text("Retry")),
         ],
@@ -280,24 +297,24 @@ class _MessagingScreenState extends State<MessagingScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Messages',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Theme.of(context).colorScheme.onSurface),
               ),
               const SizedBox(height: 4),
               Text(
                 '${_conversations.length} Active Conversations',
-                style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
               ),
             ],
           ),
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
+              color: Theme.of(context).dividerColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(LucideIcons.edit3, size: 20, color: Color(0xFF475569)),
+            child: Icon(LucideIcons.edit3, size: 20, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
           ),
         ],
       ),
@@ -312,10 +329,10 @@ class _MessagingScreenState extends State<MessagingScreen> {
           AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             decoration: BoxDecoration(
-              color: _isSearchFocused ? Colors.white : const Color(0xFFF8FAFC),
+              color: _isSearchFocused ? Theme.of(context).cardColor : Theme.of(context).scaffoldBackgroundColor,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: _isSearchFocused ? AppColors.primary.withOpacity(0.5) : const Color(0xFFF1F5F9),
+                color: _isSearchFocused ? AppColors.primary.withOpacity(0.5) : Theme.of(context).dividerColor.withOpacity(0.1),
                 width: 1.5,
               ),
               boxShadow: _isSearchFocused ? [
@@ -324,22 +341,17 @@ class _MessagingScreenState extends State<MessagingScreen> {
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
-              ] : [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.02),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+              ] : [],
             ),
             child: TextField(
               focusNode: _searchFocus,
-              decoration: const InputDecoration(
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+              decoration: InputDecoration(
                 hintText: 'Search conversations...',
-                hintStyle: TextStyle(fontSize: 14, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),
-                prefixIcon: Icon(LucideIcons.search, size: 18, color: Color(0xFF64748B)),
+                hintStyle: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4), fontWeight: FontWeight.w500),
+                prefixIcon: Icon(LucideIcons.search, size: 18, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
                 border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
               ),
             ),
           ),
@@ -355,20 +367,21 @@ class _MessagingScreenState extends State<MessagingScreen> {
       height: 40,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1)),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: _selectedJob,
           isExpanded: true,
-          icon: const Icon(LucideIcons.chevronDown, size: 14, color: Color(0xFF94A3B8)),
-          style: const TextStyle(fontSize: 13, color: Color(0xFF475569), fontWeight: FontWeight.w600),
+          icon: Icon(LucideIcons.chevronDown, size: 14, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4)),
+          dropdownColor: Theme.of(context).cardColor,
+          style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), fontWeight: FontWeight.w600),
           items: _jobOptions.map((String val) {
             return DropdownMenuItem<String>(
               value: val,
-              child: Text(val),
+              child: Text(val, style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
             );
           }).toList(),
           onChanged: (val) => setState(() => _selectedJob = val!),
@@ -394,7 +407,7 @@ class _MessagingScreenState extends State<MessagingScreen> {
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                      color: isSelected ? AppColors.primary : const Color(0xFF64748B),
+                      color: isSelected ? AppColors.primary : Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -417,7 +430,7 @@ class _MessagingScreenState extends State<MessagingScreen> {
 
   Widget _buildConversationList(bool isDesktop) {
     if (_conversations.isEmpty) {
-      return const Center(child: Text("No conversations found"));
+      return Center(child: Text("No conversations found", style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5))));
     }
 
     return RefreshIndicator(
@@ -444,6 +457,13 @@ class _MessagingScreenState extends State<MessagingScreen> {
             } catch (_) {}
           }
           
+          String? avatarUrl = otherUser['profile_image'] ?? 
+                             otherUser['profile_picture'] ??
+                             otherUser['profile_photo_url'] ?? 
+                             otherUser['avatar'] ?? 
+                             otherUser['photo'] ?? 
+                             otherUser['image'];
+          
           return InkWell(
             onTap: () {
               if (isDesktop) {
@@ -455,6 +475,7 @@ class _MessagingScreenState extends State<MessagingScreen> {
                     builder: (context) => ChatDetailScreen(
                       conversationId: id,
                       userName: otherUser['name'] ?? 'Candidate',
+                      userAvatar: avatarUrl,
                     ),
                   ),
                 ).then((_) => _fetchConversations());
@@ -463,7 +484,7 @@ class _MessagingScreenState extends State<MessagingScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               decoration: BoxDecoration(
-                color: isActive ? const Color(0xFFEEF2FF) : Colors.transparent,
+                color: isActive ? AppColors.primary.withOpacity(0.05) : Colors.transparent,
                 border: Border(
                   left: BorderSide(
                     color: isActive ? AppColors.primary : Colors.transparent,
@@ -475,13 +496,45 @@ class _MessagingScreenState extends State<MessagingScreen> {
                 children: [
                   Stack(
                     children: [
-                      CircleAvatar(
-                        radius: 24,
-                        backgroundColor: const Color(0xFFF1F5F9),
-                        child: Text(
-                          (otherUser['name'] ?? '?').substring(0, 1),
-                          style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF475569)),
-                        ),
+                      Builder(
+                        builder: (context) {
+                          String? finalUrl = avatarUrl;
+                          if (finalUrl != null && finalUrl.isNotEmpty) {
+                            if (!finalUrl.startsWith('http')) {
+                              finalUrl = 'https://www.mindwareinfotech.com${finalUrl.startsWith('/') ? '' : '/'}$finalUrl';
+                            }
+                            
+                            return CachedNetworkImage(
+                              imageUrl: finalUrl,
+                              imageBuilder: (context, imageProvider) => CircleAvatar(
+                                radius: 24,
+                                backgroundImage: imageProvider,
+                              ),
+                              placeholder: (context, url) => CircleAvatar(
+                                radius: 24,
+                                backgroundColor: Theme.of(context).dividerColor.withOpacity(0.05),
+                                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary.withOpacity(0.5)),
+                              ),
+                              errorWidget: (context, url, error) => CircleAvatar(
+                                radius: 24,
+                                backgroundColor: AppColors.primary.withOpacity(0.1),
+                                child: Text(
+                                  (otherUser['name'] ?? '?').substring(0, 1).toUpperCase(),
+                                  style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 18),
+                                ),
+                              ),
+                            );
+                          }
+                          
+                          return CircleAvatar(
+                            radius: 24,
+                            backgroundColor: AppColors.primary.withOpacity(0.1),
+                            child: Text(
+                              (otherUser['name'] ?? '?').substring(0, 1).toUpperCase(),
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 18),
+                            ),
+                          );
+                        }
                       ),
                       if (chat['is_online'] == true)
                         Positioned(
@@ -493,7 +546,7 @@ class _MessagingScreenState extends State<MessagingScreen> {
                             decoration: BoxDecoration(
                               color: const Color(0xFF22C55E),
                               shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
+                              border: Border.all(color: Theme.of(context).cardColor, width: 2),
                             ),
                           ),
                         ),
@@ -512,12 +565,12 @@ class _MessagingScreenState extends State<MessagingScreen> {
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: unreadCount > 0 ? FontWeight.w800 : FontWeight.w700,
-                                color: const Color(0xFF1E293B),
+                                color: Theme.of(context).colorScheme.onSurface,
                               ),
                             ),
                             Text(
                               timeStr,
-                              style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                              style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4)),
                             ),
                           ],
                         ),
@@ -531,7 +584,7 @@ class _MessagingScreenState extends State<MessagingScreen> {
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: unreadCount > 0 ? const Color(0xFF1E293B) : const Color(0xFF64748B),
+                                  color: unreadCount > 0 ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
                                   fontWeight: unreadCount > 0 ? FontWeight.w600 : FontWeight.w400,
                                 ),
                               ),
@@ -580,27 +633,27 @@ class _MessagingScreenState extends State<MessagingScreen> {
           Container(
             padding: const EdgeInsets.all(32),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).cardColor,
               shape: BoxShape.circle,
-              boxShadow: [
+              boxShadow: Theme.of(context).brightness == Brightness.light ? [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.05),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
                 ),
-              ],
+              ] : [],
             ),
-            child: const Icon(LucideIcons.messageSquare, size: 48, color: Color(0xFFCBD5E1)),
+            child: Icon(LucideIcons.messageSquare, size: 48, color: Theme.of(context).dividerColor.withOpacity(0.2)),
           ),
           const SizedBox(height: 24),
-          const Text(
+          Text(
             'Select a conversation',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Theme.of(context).colorScheme.onSurface),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Choose a candidate from the left to start chatting',
-            style: TextStyle(fontSize: 14, color: Color(0xFF64748B)),
+            style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
           ),
         ],
       ),
