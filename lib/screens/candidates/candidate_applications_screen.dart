@@ -1021,14 +1021,16 @@ class _StageDropdown extends ConsumerWidget {
     String normalizedStatus = status;
     if (status == 'shortlisted') normalizedStatus = 'shortlist';
     if (status == 'interviewed') normalizedStatus = 'schedule_interview';
-    if (status == 'rejected') normalizedStatus = 'reject';
-    if (status == 'hired') normalizedStatus = 'hire';
-    if (status == 'applied') normalizedStatus = 'new';
+    if (status == 'rejected' || status == 'reject') normalizedStatus = 'reject';
+    if (status == 'hired' || status == 'hire') normalizedStatus = 'hire';
+    if (status == 'applied' || status == 'new') normalizedStatus = 'new';
+    if (status == 'contacting') normalizedStatus = 'contacting';
 
     final stages = [
       {'label': 'New', 'key': 'new', 'color': Colors.grey},
       {'label': 'Interview', 'key': 'schedule_interview', 'color': Colors.orange},
       {'label': 'Shortlisted', 'key': 'shortlist', 'color': Colors.blue},
+      {'label': 'Contacting', 'key': 'contacting', 'color': Colors.purple},
       {'label': 'Hired', 'key': 'hire', 'color': Colors.green},
       {'label': 'Rejected', 'key': 'reject', 'color': Colors.red},
     ];
@@ -1066,7 +1068,7 @@ class _StageDropdown extends ConsumerWidget {
           children: [
             Container(width: 8, height: 8, decoration: BoxDecoration(color: s['color'] as Color, shape: BoxShape.circle)),
             const SizedBox(width: 12),
-            Text(s['label'] as String, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+            Text(s['label'] as String, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.black87)),
           ],
         ),
       )).toList(),
