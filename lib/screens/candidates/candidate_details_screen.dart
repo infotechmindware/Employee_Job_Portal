@@ -6,6 +6,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../theme/app_colors.dart';
 import '../../providers/employer_jobs_provider.dart';
+import 'package:intl/intl.dart';
+import '../../services/chat_service.dart';
+import '../messaging/chat_detail_screen.dart';
+import '../../services/job_service.dart';
 
 class CandidateDetailsScreen extends ConsumerWidget {
   final Map<String, dynamic> candidate;
@@ -51,6 +55,10 @@ class CandidateDetailsScreen extends ConsumerWidget {
       imageUrl = "https://www.mindwareinfotech.com$imageUrl";
     }
 
+    final appId = candidate['id'];
+    final candId = profile['id'] ?? candidate['candidate_id'];
+    final jobId = job['id'] ?? candidate['job_id'];
+
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
@@ -71,7 +79,7 @@ class CandidateDetailsScreen extends ConsumerWidget {
           children: [
             _buildHeader(name, jobTitle, status, imageUrl, context),
             _buildAIMatchAnalysis(candidate, profile, job, context),
-            _buildActionButtons(mobile, context),
+            _buildActionButtons(context, ref, appId, candId, jobId),
             _buildDetailSection('Basic Info', [
               _buildInfoRow(LucideIcons.mail, 'Email', email, context),
               _buildInfoRow(LucideIcons.phone, 'Phone', mobile, context),
@@ -90,11 +98,10 @@ class CandidateDetailsScreen extends ConsumerWidget {
               _buildDetailSection('Resume', [
                 _buildResumeAction(candidate['resume_url'], context),
               ], context),
-            const SizedBox(height: 100),
+            const SizedBox(height: 40),
           ],
         ),
       ),
-      bottomSheet: _buildBottomActions(context, ref),
     );
   }
 
@@ -249,40 +256,77 @@ class CandidateDetailsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildActionButtons(String? phone, BuildContext context) {
+  Widget _buildActionButtons(BuildContext context, WidgetRef ref, dynamic appId, dynamic candId, dynamic jobId) {
     return Container(
-      color: Theme.of(context).cardColor,
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-      child: Row(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5)),
+        ],
+      ),
+      child: Column(
         children: [
-          Expanded(
-            child: ElevatedButton.icon(
-              onPressed: () => _launchWhatsApp(phone),
-              icon: const Icon(LucideIcons.phone, size: 18),
-              label: const Text('WhatsApp'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF25D366),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                elevation: 0,
-              ),
-            ),
+          Row(
+            children: [
+              Expanded(child: _buildActionCard(
+                context,
+                'Shortlist', 
+                LucideIcons.userCheck, 
+                const [Color(0xFF10B981), Color(0xFF059669)], 
+                () => _handleStatusUpdate(context, ref, appId, 'shortlist')
+              )),
+              const SizedBox(width: 12),
+              Expanded(child: _buildActionCard(
+                context,
+                'Contacting', 
+                LucideIcons.phoneCall, 
+                const [Color(0xFFF59E0B), Color(0xFFD97706)], 
+                () => _handleStatusUpdate(context, ref, appId, 'contacting')
+              )),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: ElevatedButton.icon(
-              onPressed: () => _makeCall(phone),
-              icon: const Icon(LucideIcons.phoneCall, size: 18),
-              label: const Text('Call'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                elevation: 0,
-              ),
-            ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(child: _buildActionCard(
+                context,
+                'Reject', 
+                LucideIcons.userX, 
+                const [Color(0xFFEF4444), Color(0xFFDC2626)], 
+                () => _handleStatusUpdate(context, ref, appId, 'reject')
+              )),
+              const SizedBox(width: 12),
+              Expanded(child: _buildActionCard(
+                context,
+                'Hire', 
+                LucideIcons.award, 
+                const [Color(0xFF8B5CF6), Color(0xFF7C3AED)], 
+                () => _handleStatusUpdate(context, ref, appId, 'hire')
+              )),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(child: _buildActionCard(
+                context, 
+                'Schedule', 
+                LucideIcons.calendar, 
+                const [Color(0xFF6366F1), Color(0xFF4F46E5)], 
+                () => _showScheduleInterviewDialog(context, ref, appId, candId, jobId)
+              )),
+              const SizedBox(width: 12),
+              Expanded(child: _buildActionCard(
+                context,
+                'Message', 
+                LucideIcons.messageSquare, 
+                const [Color(0xFF3B82F6), Color(0xFF2563EB)], 
+                () => _openMessaging(context, candId)
+              )),
+            ],
           ),
         ],
       ),
@@ -403,59 +447,334 @@ class CandidateDetailsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildBottomActions(BuildContext context, WidgetRef ref) {
-    final appId = candidate['id'];
-    
+  Widget _buildActionCard(BuildContext context, String label, IconData icon, List<Color> colors, VoidCallback onTap) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      height: 52,
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        boxShadow: Theme.of(context).brightness == Brightness.light ? [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5)),
-        ] : [],
+        gradient: LinearGradient(colors: colors, begin: Alignment.topLeft, end: Alignment.bottomRight),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(color: colors[0].withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: OutlinedButton(
-              onPressed: () async {
-                if (appId == null) return;
-                final success = await ref.read(employerJobsProvider.notifier).updateApplicationStatus(appId, 'rejected');
-                if (context.mounted && success) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Candidate Rejected')));
-                }
-              },
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                side: const BorderSide(color: Color(0xFFEF4444)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 18, color: Colors.white),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14),
               ),
-              child: const Text('Reject', style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.w700)),
-            ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: () async {
-                if (appId == null) return;
-                final success = await ref.read(employerJobsProvider.notifier).updateApplicationStatus(appId, 'shortlisted');
-                if (context.mounted && success) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Candidate Shortlisted')));
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).brightness == Brightness.light ? const Color(0xFF10B981) : const Color(0xFF059669),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                elevation: 0,
-              ),
-              child: const Text('Shortlist', style: TextStyle(fontWeight: FontWeight.w700)),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleStatusUpdate(BuildContext context, WidgetRef ref, dynamic appId, String status) async {
+    if (appId == null) return;
+    
+    final profile = candidate['candidate'] ?? {};
+    final candId = profile['id'] ?? candidate['candidate_id'];
+    final job = candidate['job'] ?? {};
+    final jobId = job['id'] ?? candidate['job_id'];
+
+    // Show immediate feedback
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('Updating status to ${status.toUpperCase()}...'),
+      duration: const Duration(milliseconds: 800),
+      behavior: SnackBarBehavior.floating,
+    ));
+
+    final success = await ref.read(employerJobsProvider.notifier).updateApplicationStatus(
+      applicationId: appId, 
+      status: status,
+      candidateId: candId,
+      jobId: jobId,
+    );
+    
+    if (context.mounted && success) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Candidate ${status.toUpperCase()} Successfully'),
+        backgroundColor: _getStatusColor(status),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ));
+    } else if (context.mounted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Failed to update status. Please try again.'),
+        backgroundColor: Color(0xFFEF4444),
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'shortlisted': return const Color(0xFF10B981);
+      case 'rejected': return const Color(0xFFEF4444);
+      case 'hired': return const Color(0xFF8B5CF6);
+      case 'contacting': return const Color(0xFFF59E0B);
+      case 'interviewed': return const Color(0xFF6366F1);
+      default: return const Color(0xFF6366F1);
+    }
+  }
+
+  void _showRejectConfirmation(BuildContext context, WidgetRef ref, dynamic appId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text('Confirm Rejection', style: TextStyle(fontWeight: FontWeight.w800)),
+        content: const Text('Are you sure you want to reject this candidate? This action will be synced with the desktop panel.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w700)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _handleStatusUpdate(context, ref, appId, 'rejected');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
+            child: const Text('Confirm Reject', style: TextStyle(fontWeight: FontWeight.w800)),
           ),
         ],
       ),
     );
+  }
+
+  void _showScheduleInterviewDialog(BuildContext context, WidgetRef ref, dynamic appId, dynamic candId, dynamic jobId) {
+    final theme = Theme.of(context);
+    final dateController = TextEditingController(text: DateFormat('yyyy-MM-dd').format(DateTime.now()));
+    final timeController = TextEditingController(text: '10:30 AM');
+    final notesController = TextEditingController();
+    String selectedMode = 'Video Call (Google Meet)';
+    
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Schedule Interview', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: theme.colorScheme.onSurface)),
+                  const SizedBox(height: 8),
+                  Text('Set up meeting details for this candidate', style: TextStyle(fontSize: 14, color: theme.colorScheme.onSurface.withOpacity(0.5))),
+                  const SizedBox(height: 24),
+                  
+                  _buildDialogLabel('Date'),
+                  _buildDialogField(LucideIcons.calendar, 'Select Date', dateController, onTap: () async {
+                    final date = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 365)));
+                    if (date != null) setDialogState(() => dateController.text = DateFormat('yyyy-MM-dd').format(date));
+                  }),
+                  
+                  const SizedBox(height: 16),
+                  _buildDialogLabel('Time'),
+                  _buildDialogField(LucideIcons.clock, 'Select Time', timeController, onTap: () async {
+                    final time = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+                    if (time != null) setDialogState(() => timeController.text = time.format(context));
+                  }),
+                  
+                  const SizedBox(height: 16),
+                  _buildDialogLabel('Interview Mode'),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(color: theme.dividerColor.withOpacity(0.05), borderRadius: BorderRadius.circular(16), border: Border.all(color: theme.dividerColor.withOpacity(0.1))),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: selectedMode,
+                        isExpanded: true,
+                        items: ['Video Call (Google Meet)', 'In-Person (Office)', 'Phone Call'].map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(),
+                        onChanged: (val) => setDialogState(() => selectedMode = val!),
+                      ),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 16),
+                  _buildDialogLabel('Notes (Optional)'),
+                  _buildDialogField(LucideIcons.pencil, 'Enter interview notes...', notesController, maxLines: 3),
+                  
+                  const SizedBox(height: 32),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: Text('Cancel', style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w700)),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            final data = {
+                              'application_id': appId,
+                              'candidate_id': candId,
+                              'job_id': jobId,
+                              'scheduled_start': '${dateController.text} ${timeController.text}',
+                              'interview_type': selectedMode,
+                              'notes': notesController.text,
+                            };
+                            final result = await JobService.scheduleInterview(data);
+                            if (result['success']) {
+                              // Automatically update status to interviewed and refresh
+                              await ref.read(employerJobsProvider.notifier).updateApplicationStatus(
+                                applicationId: appId, 
+                                status: 'schedule_interview',
+                                candidateId: candId,
+                                jobId: jobId,
+                              );
+                            }
+                            
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                content: Text(result['success'] ? 'Interview Scheduled & Status Updated' : (result['message'] ?? 'Failed to schedule')),
+                                backgroundColor: result['success'] ? const Color(0xFF6366F1) : const Color(0xFFEF4444),
+                                behavior: SnackBarBehavior.floating,
+                              ));
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF6366F1),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                          child: const Text('Schedule', style: TextStyle(fontWeight: FontWeight.w900)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDialogLabel(String label) => Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)));
+
+  Widget _buildDialogField(IconData icon, String hint, TextEditingController controller, {VoidCallback? onTap, int maxLines = 1}) {
+    return TextField(
+      controller: controller,
+      readOnly: onTap != null,
+      onTap: onTap,
+      maxLines: maxLines,
+      decoration: InputDecoration(
+        hintText: hint,
+        prefixIcon: Icon(icon, size: 18),
+        filled: true,
+        fillColor: Colors.grey.withOpacity(0.05),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      ),
+    );
+  }
+
+  Future<void> _openMessaging(BuildContext context, dynamic candidateId) async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    scaffoldMessenger.showSnackBar(const SnackBar(
+      content: Row(
+        children: [
+          SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+          SizedBox(width: 16),
+          Text('Syncing conversation...'),
+        ],
+      ),
+      duration: Duration(seconds: 2),
+      behavior: SnackBarBehavior.floating,
+    ));
+
+    try {
+      // 1. Fetch all conversations to see if one already exists
+      final response = await ChatService.getConversations();
+      
+      if (response['success']) {
+        final conversations = response['data']['conversations'] as List;
+        final existingConv = conversations.firstWhere(
+          (c) => c['other_user']?['id']?.toString() == candidateId.toString(),
+          orElse: () => null,
+        );
+        
+        if (context.mounted) {
+          if (existingConv != null) {
+            // 2a. Open existing conversation
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ChatDetailScreen(
+                  conversationId: existingConv['id'].toString(),
+                  userName: existingConv['other_user']?['name'] ?? 'Candidate',
+                  userAvatar: existingConv['other_user']?['profile_image'] ?? existingConv['other_user']?['avatar'],
+                ),
+              ),
+            );
+          } else {
+            // 2b. Start a new conversation if it doesn't exist
+            final startResponse = await ChatService.startConversation(candidateId.toString());
+            
+            if (context.mounted) {
+              if (startResponse['success']) {
+                final newConv = startResponse['data']['conversation'] ?? startResponse['data'];
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ChatDetailScreen(
+                      conversationId: newConv['id'].toString(),
+                      userName: newConv['other_user']?['name'] ?? 'Candidate',
+                      userAvatar: newConv['other_user']?['profile_image'] ?? newConv['other_user']?['avatar'],
+                    ),
+                  ),
+                );
+              } else {
+                scaffoldMessenger.showSnackBar(SnackBar(
+                  content: Text(startResponse['message'] ?? 'Failed to start conversation'),
+                  behavior: SnackBarBehavior.floating,
+                ));
+              }
+            }
+          }
+        }
+      } else {
+        if (context.mounted) {
+          scaffoldMessenger.showSnackBar(SnackBar(
+            content: Text(response['message'] ?? 'Failed to sync messages'),
+            behavior: SnackBarBehavior.floating,
+          ));
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        scaffoldMessenger.showSnackBar(const SnackBar(
+          content: Text('An error occurred while opening messaging'),
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    }
   }
 
   void _launchWhatsApp(String? phone) async {

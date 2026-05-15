@@ -397,11 +397,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            TextButton.icon(
+            IconButton(
               onPressed: () => Navigator.pop(context),
-              icon: const Icon(LucideIcons.chevronLeft, size: 16, color: Colors.grey),
-              label: const Text('Back to Home', style: TextStyle(color: Colors.grey)),
-              style: TextButton.styleFrom(padding: EdgeInsets.zero),
+              icon: const Icon(LucideIcons.chevronLeft, size: 20, color: Colors.grey),
+              style: IconButton.styleFrom(padding: EdgeInsets.zero, alignment: Alignment.centerLeft),
             ),
           ],
         ),

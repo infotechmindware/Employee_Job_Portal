@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../providers/navigation_provider.dart';
 import '../screens/dashboard/dashboard_screen.dart';
 import '../screens/candidates/candidate_applications_screen.dart';
@@ -18,6 +19,7 @@ import '../screens/settings/settings_screen.dart';
 import '../screens/profile/profile_stepper_screen.dart';
 import '../screens/profile/document_verification_screen.dart';
 import '../screens/profile/company_profile_screen.dart';
+import '../screens/billing/my_subscription_screen.dart';
 import '../widgets/layout/sidebar.dart';
 import '../widgets/layout/header.dart';
 import '../theme/app_colors.dart';
@@ -34,8 +36,8 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
 
   final List<Widget> _screens = [
     const DashboardScreen(),         // 0
-    const JobsScreen(),              // 1 (Swapped to match Sidebar index 1)
-    const CandidateApplicationsScreen(), // 2 (Swapped to match Sidebar index 2)
+    const JobsScreen(),              // 1
+    const CandidateApplicationsScreen(), // 2
     const InterviewsScreen(),        // 3
     const AnalyticsScreen(),         // 4
     const MessagingScreen(),         // 5
@@ -46,9 +48,10 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     const InvoicesScreen(),          // 10 (62)
     const PaymentMethodsScreen(),    // 11 (63)
     const BillingSettingsScreen(),   // 12 (64)
-    const ProfileStepperScreen(),     // 13 (100)
-    const DocumentVerificationScreen(), // 14 (101)
-    const CompanyProfileScreen(),    // 15 (102)
+    const MySubscriptionScreen(),    // 13 (85)
+    const ProfileStepperScreen(),     // 14 (100)
+    const DocumentVerificationScreen(), // 15 (101)
+    const CompanyProfileScreen(),    // 16 (102)
   ];
 
   int _getStackIndex(int activeIndex) {
@@ -66,9 +69,10 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       case 62: return 10;
       case 63: return 11;
       case 64: return 12;
-      case 100: return 13;
-      case 101: return 14;
-      case 102: return 15;
+      case 85: return 13;
+      case 100: return 14;
+      case 101: return 15;
+      case 102: return 16;
       default: return 0;
     }
   }
@@ -100,8 +104,9 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       drawerScrimColor: Colors.black.withOpacity(0.3),
       drawer: !isDesktop 
         ? Drawer(
-            backgroundColor: Theme.of(context).cardColor,
-            width: MediaQuery.of(context).size.width * 0.7,
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            width: MediaQuery.of(context).size.width * 0.75,
             child: const Sidebar(showCloseButton: true),
           )
         : null,
@@ -112,15 +117,17 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
             type: BottomNavigationBarType.fixed,
             backgroundColor: Theme.of(context).cardColor,
             selectedItemColor: AppColors.primary,
-            unselectedItemColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-            showSelectedLabels: false,
-            showUnselectedLabels: false,
+            unselectedItemColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+            showSelectedLabels: true,
+            showUnselectedLabels: true,
+            selectedLabelStyle: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700),
+            unselectedLabelStyle: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w500),
             items: const [
-              BottomNavigationBarItem(icon: Icon(LucideIcons.layoutDashboard, size: 22), label: ''),
-              BottomNavigationBarItem(icon: Icon(LucideIcons.users, size: 22), label: ''), // Candidates
-              BottomNavigationBarItem(icon: Icon(LucideIcons.briefcase, size: 22), label: ''), // Jobs
-              BottomNavigationBarItem(icon: Icon(LucideIcons.messageCircle, size: 22), label: ''), // Messages
-              BottomNavigationBarItem(icon: Icon(LucideIcons.barChart3, size: 22), label: ''), // Analytics
+              BottomNavigationBarItem(icon: Icon(LucideIcons.layoutGrid, size: 20), label: 'Dashboard'),
+              BottomNavigationBarItem(icon: Icon(LucideIcons.users2, size: 20), label: 'Candidates'),
+              BottomNavigationBarItem(icon: Icon(LucideIcons.briefcase, size: 20), label: 'Jobs'),
+              BottomNavigationBarItem(icon: Icon(LucideIcons.messageSquare, size: 20), label: 'Messages'),
+              BottomNavigationBarItem(icon: Icon(LucideIcons.barChartBig, size: 20), label: 'Reports'),
             ],
           )
         : null,

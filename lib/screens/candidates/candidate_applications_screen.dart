@@ -6,6 +6,9 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'candidate_details_screen.dart';
 import '../subscription/subscription_plans_screen.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import '../../services/chat_service.dart';
+import '../messaging/chat_detail_screen.dart';
 import '../../services/job_service.dart';
 import '../../theme/app_colors.dart';
 import '../../providers/employer_jobs_provider.dart';
@@ -871,16 +874,18 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
   }
 }
 
-class _CandidateCard extends StatelessWidget {
+class _CandidateCard extends ConsumerWidget {
   final Map<String, dynamic> app;
   final VoidCallback onTap;
 
   const _CandidateCard({required this.app, required this.onTap});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final candidate = app['candidate'] ?? {};
     final job = app['job'] ?? {};
+    final phone = candidate['phone'] ?? candidate['mobile'] ?? app['candidate_mobile'];
+    final candId = candidate['id'] ?? app['candidate_id'];
     
     final name = candidate['full_name'] ?? app['full_name'] ?? "Candidate";
     final match = app['score']?.toString() ?? "0";
@@ -908,6 +913,7 @@ class _CandidateCard extends StatelessWidget {
     final theme = Theme.of(context);
     return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(24),
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
@@ -977,11 +983,23 @@ class _CandidateCard extends StatelessWidget {
             const SizedBox(height: 16),
             Row(
               children: [
-                _buildAction(context, LucideIcons.messageSquare, 'Message', theme.colorScheme.onSurface.withOpacity(0.5)),
+                _buildAction(
+                  context, 
+                  FontAwesomeIcons.whatsapp, 
+                  'WhatsApp', 
+                  const Color(0xFF22C55E),
+                  () => _handleWhatsApp(context, phone)
+                ),
                 const SizedBox(width: 8),
-                _buildAction(context, LucideIcons.phone, 'WhatsApp', const Color(0xFF22C55E)),
+                _buildAction(
+                  context, 
+                  LucideIcons.phoneCall, 
+                  'Call', 
+                  const Color(0xFF4F46E5),
+                  () => _handleCall(context, phone)
+                ),
                 const SizedBox(width: 8),
-                _buildAction(context, LucideIcons.stickyNote, 'Note', theme.primaryColor),
+                _StageDropdown(app: app),
               ],
             ),
           ],
@@ -989,29 +1007,151 @@ class _CandidateCard extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _buildAction(BuildContext context, IconData icon, String label, Color color) {
-    final theme = Theme.of(context);
-    return Expanded(
+class _StageDropdown extends ConsumerWidget {
+  final Map<String, dynamic> app;
+  const _StageDropdown({required this.app});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final status = app['status']?.toString().toLowerCase() ?? 'applied';
+    
+    // Normalize status to our keys
+    String normalizedStatus = status;
+    if (status == 'shortlisted') normalizedStatus = 'shortlist';
+    if (status == 'interviewed') normalizedStatus = 'schedule_interview';
+    if (status == 'rejected') normalizedStatus = 'reject';
+    if (status == 'hired') normalizedStatus = 'hire';
+    if (status == 'applied') normalizedStatus = 'new';
+
+    final stages = [
+      {'label': 'New', 'key': 'new', 'color': Colors.grey},
+      {'label': 'Interview', 'key': 'schedule_interview', 'color': Colors.orange},
+      {'label': 'Shortlisted', 'key': 'shortlist', 'color': Colors.blue},
+      {'label': 'Hired', 'key': 'hire', 'color': Colors.green},
+      {'label': 'Rejected', 'key': 'reject', 'color': Colors.red},
+    ];
+
+    final currentStage = stages.firstWhere(
+      (s) => s['key'] == normalizedStatus,
+      orElse: () => stages[0]
+    );
+
+    final stageColor = currentStage['color'] as Color;
+
+    return PopupMenuButton<String>(
+      onSelected: (newKey) async {
+         // Show a small snackbar or loading indicator
+         ScaffoldMessenger.of(context).showSnackBar(
+           SnackBar(
+             content: Text('Updating stage to ${newKey.toUpperCase()}...'), 
+             duration: const Duration(milliseconds: 500),
+             behavior: SnackBarBehavior.floating,
+             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+           ),
+         );
+         
+         await ref.read(employerJobsProvider.notifier).updateApplicationStatus(
+           applicationId: app['id'],
+           status: newKey,
+           candidateId: app['candidate_id'] ?? app['candidate']?['id'],
+           jobId: app['job_id'] ?? app['job']?['id'],
+         );
+      },
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      itemBuilder: (context) => stages.map((s) => PopupMenuItem<String>(
+        value: s['key'] as String,
+        child: Row(
+          children: [
+            Container(width: 8, height: 8, decoration: BoxDecoration(color: s['color'] as Color, shape: BoxShape.circle)),
+            const SizedBox(width: 12),
+            Text(s['label'] as String, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+          ],
+        ),
+      )).toList(),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.05), 
-          borderRadius: BorderRadius.circular(12), 
-          border: Border.all(color: color.withOpacity(0.1))
+          color: stageColor.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: stageColor.withOpacity(0.2)),
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 14, color: color),
+            Text(
+              currentStage['label'] as String,
+              style: TextStyle(color: stageColor, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+            ),
             const SizedBox(width: 6),
-            Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: color)),
+            Icon(LucideIcons.chevronDown, size: 12, color: stageColor),
           ],
         ),
       ),
     );
   }
 }
+
+  void _handleWhatsApp(BuildContext context, dynamic phone) async {
+    if (phone == null || phone.toString().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('WhatsApp number not available')));
+      return;
+    }
+    String cleanPhone = phone.toString().replaceAll(RegExp(r'[^0-9]'), '');
+    if (!cleanPhone.startsWith('91') && cleanPhone.length == 10) cleanPhone = '91$cleanPhone';
+    final url = Uri.parse("whatsapp://send?phone=$cleanPhone");
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('WhatsApp is not installed')));
+    }
+  }
+
+  void _handleCall(BuildContext context, dynamic phone) async {
+    if (phone == null || phone.toString().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Phone number not available')));
+      return;
+    }
+    final url = Uri.parse("tel:${phone.toString()}");
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not launch dialer')));
+    }
+  }
+
+  Widget _buildAction(BuildContext context, IconData icon, String label, Color bgColor, VoidCallback onTap) {
+    return Expanded(
+      child: Material(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 11),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 15, color: Colors.white),
+                const SizedBox(width: 8),
+                Text(
+                  label, 
+                  style: const TextStyle(
+                    fontSize: 12, 
+                    fontWeight: FontWeight.w900, 
+                    color: Colors.white,
+                    letterSpacing: 0.3
+                  )
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
 class _CandidatePreviewModal extends StatelessWidget {
   final Map<String, dynamic> app;

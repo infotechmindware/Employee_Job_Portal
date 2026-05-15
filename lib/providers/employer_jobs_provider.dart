@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/job_service.dart';
+import 'dashboard_provider.dart';
 
 class EmployerJobsState {
   final List<dynamic> jobs;
@@ -79,11 +80,23 @@ class EmployerJobsNotifier extends Notifier<AsyncValue<EmployerJobsState>> {
     }
   }
 
-  Future<bool> updateApplicationStatus(int applicationId, String status) async {
+  Future<bool> updateApplicationStatus({
+    required dynamic applicationId, 
+    required String status,
+    dynamic candidateId,
+    dynamic jobId,
+  }) async {
     try {
-      final success = await JobService.updateApplicationStatus(applicationId, status);
+      final success = await JobService.updateApplicationStatus(
+        applicationId: applicationId, 
+        status: status,
+        candidateId: candidateId,
+        jobId: jobId,
+      );
       if (success) {
         await fetchAll(showLoading: false);
+        // Refresh dashboard statistics as well
+        ref.invalidate(dashboardDataProvider);
       }
       return success;
     } catch (e) {

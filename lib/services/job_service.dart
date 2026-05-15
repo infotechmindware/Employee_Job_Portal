@@ -370,13 +370,110 @@ class JobService {
     }
   }
 
-  static Future<bool> updateApplicationStatus(int applicationId, String status) async {
+  static Future<bool> updateApplicationStatus({
+    required dynamic applicationId, 
+    required String status,
+    dynamic candidateId,
+    dynamic jobId,
+  }) async {
     try {
-      final url = Uri.parse('$baseUrl/employer/applications/$applicationId');
+      // Map action keys to backend status values if needed
+      final Map<String, String> statusMapping = {
+        'shortlist': 'shortlisted',
+        'reject': 'rejected',
+        'schedule_interview': 'interviewed',
+        'contacting': 'contacting',
+        'hire': 'hired',
+        'new': 'applied'
+      };
+      
+      final String mappedStatus = statusMapping[status.toLowerCase()] ?? status;
+      
+      // Robust multi-endpoint fallback strategy for status updates
+      final endpoints = [
+        // 1. Action-specific endpoints (High priority)
+        if (status == 'shortlist') '$baseUrl/employer/applications/$applicationId/shortlist',
+        if (status == 'reject') '$baseUrl/employer/applications/$applicationId/reject',
+        
+        // 2. Dedicated status update endpoint
+        '$baseUrl/employer/applications/$applicationId/status',
+        
+        // 3. Generic application update endpoints
+        '$baseUrl/employer/applications/$applicationId',
+        '$baseUrl/employer/applications/update-status',
+        '$baseUrl/employer/applications/$applicationId/update',
+      ];
+      
       final auth = AuthService();
       final token = await auth.getToken();
 
-      final response = await http.put(
+      final body = {
+        'status': mappedStatus,
+        'application_id': applicationId,
+        if (candidateId != null) 'candidate_id': candidateId,
+        if (jobId != null) 'job_id': jobId,
+        '_method': 'PUT', // For REST compatibility
+      };
+
+      for (var urlStr in endpoints) {
+        try {
+          final url = Uri.parse(urlStr);
+          print('📡 [API] Updating Status via: $url');
+          
+          // For specific action endpoints, we might not need the full body or _method spoofing
+          final bool isActionEndpoint = urlStr.endsWith('/shortlist') || 
+                                       urlStr.endsWith('/reject') || 
+                                       urlStr.endsWith('/status');
+          
+          final Map<String, dynamic> requestBody = isActionEndpoint 
+            ? {'status': mappedStatus} 
+            : body;
+
+          print('📦 [API] Payload: $requestBody');
+
+          final response = await http.post(
+            url,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'Authorization': 'Bearer $token',
+              'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: jsonEncode(requestBody),
+          ).timeout(const Duration(seconds: 10));
+
+          print('📝 [API] Response (${response.statusCode}): ${response.body}');
+          
+          if (response.statusCode == 200 || response.statusCode == 201) {
+            final result = json.decode(response.body);
+            // If body says "Not Found" despite 200, try next fallback
+            if (result['error'] == 'Not Found' || result['message'] == 'Not Found') {
+              print('⚠️ Endpoint $urlStr returned Not Found in body, trying next...');
+              continue;
+            }
+            return result['success'] == true || result['status'] == true || result['status'] == 'success' || result['message']?.toString().toLowerCase().contains('success') == true;
+          } else if (response.statusCode == 404) {
+             print('⚠️ Endpoint $urlStr returned 404, trying next...');
+             continue;
+          }
+        } catch (e) {
+          print('⚠️ Error with endpoint $urlStr: $e');
+        }
+      }
+      return false;
+    } catch (e) {
+      print('❌ Update Application Status Error: $e');
+      return false;
+    }
+  }
+
+  static Future<Map<String, dynamic>> scheduleInterview(Map<String, dynamic> data) async {
+    try {
+      final url = Uri.parse('$baseUrl/employer/interviews');
+      final auth = AuthService();
+      final token = await auth.getToken();
+
+      final response = await http.post(
         url,
         headers: {
           'Content-Type': 'application/json',
@@ -384,14 +481,20 @@ class JobService {
           'Authorization': 'Bearer $token',
           'X-Requested-With': 'XMLHttpRequest',
         },
-        body: jsonEncode({'status': status}),
-      ).timeout(const Duration(seconds: 10));
+        body: jsonEncode(data),
+      ).timeout(const Duration(seconds: 15));
 
-      print('📝 Update Application Status Response (${response.statusCode}): ${response.body}');
-      return response.statusCode == 200;
+      print('🗓️ Schedule Interview Response (${response.statusCode}): ${response.body}');
+      
+      final result = json.decode(response.body);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {'success': true, 'data': result['data'] ?? result};
+      } else {
+        return {'success': false, 'message': result['message'] ?? 'Failed to schedule interview'};
+      }
     } catch (e) {
-      print('❌ Update Application Status Error: $e');
-      return false;
+      print('❌ Schedule Interview Error: $e');
+      return {'success': false, 'message': 'Network error: $e'};
     }
   }
 }

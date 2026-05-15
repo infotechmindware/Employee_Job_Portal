@@ -311,13 +311,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        TextButton.icon(
-          onPressed: () {},
-          icon: const Icon(LucideIcons.chevronLeft, size: 16, color: Colors.grey),
-          label: const Text('Back to Home', style: TextStyle(color: Colors.grey)),
-          style: TextButton.styleFrom(padding: EdgeInsets.zero),
-        ),
-        const SizedBox(height: 32),
         Row(
           children: [
             Container(

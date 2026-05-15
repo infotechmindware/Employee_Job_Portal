@@ -149,4 +149,39 @@ class ChatService {
       return {'success': false, 'message': e.toString()};
     }
   }
+  static Future<Map<String, dynamic>> startConversation(String candidateId) async {
+    try {
+      final url = '$baseUrl/conversations';
+      final auth = AuthService();
+      final token = await auth.getToken();
+      
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: jsonEncode({
+          'user_id': candidateId,
+        }),
+      ).timeout(const Duration(seconds: 10));
+
+      final bodyData = jsonDecode(response.body);
+      if (response.statusCode == 200 || response.statusCode == 201 || bodyData['success'] == true || bodyData['status'] == true) {
+        return {
+          'success': true,
+          'data': bodyData['data'] ?? bodyData,
+        };
+      }
+      return {
+        'success': false, 
+        'message': bodyData['message'] ?? 'Failed to start conversation'
+      };
+    } catch (e) {
+      print('❌ [ChatService] startConversation Error: $e');
+      return {'success': false, 'message': 'Network error'};
+    }
+  }
 }

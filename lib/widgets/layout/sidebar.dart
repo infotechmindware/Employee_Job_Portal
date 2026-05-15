@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../providers/navigation_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/dashboard_provider.dart';
@@ -48,9 +49,10 @@ class _SidebarState extends ConsumerState<Sidebar> {
           ],
         ),
       ),
-      child: Column(
-        children: [
-          const SizedBox(height: 20),
+      child: SafeArea(
+        child: Column(
+          children: [
+            const SizedBox(height: 10),
           _buildBrandHeader(context),
           const SizedBox(height: 24),
           if (!widget.isCollapsed) _buildCreateNewButton(),
@@ -78,11 +80,11 @@ class _SidebarState extends ConsumerState<Sidebar> {
                     _buildSubMenuItem(context, ref, 6, 'Billing Overview', activeIndex == 6),
                     _buildSubMenuItem(context, ref, 61, 'Transactions', activeIndex == 61),
                     _buildSubMenuItem(context, ref, 62, 'Invoices', activeIndex == 62),
-                    _buildSubMenuItem(context, ref, 8, 'My Subscription', activeIndex == 8),
+                    _buildSubMenuItem(context, ref, 85, 'My Subscription', activeIndex == 85),
                     _buildSubMenuItem(context, ref, 63, 'Payment Methods', activeIndex == 63),
                     _buildSubMenuItem(context, ref, 64, 'Billing Settings', activeIndex == 64),
                   ],
-                  isActive: activeIndex == 6 || (activeIndex >= 61 && activeIndex <= 64) || activeIndex == 8,
+                  isActive: activeIndex == 6 || (activeIndex >= 61 && activeIndex <= 64) || activeIndex == 85,
                 ),
                 _buildMenuItem(context, ref, 8, 'Subscription Plans', LucideIcons.sparkles, isActive: activeIndex == 8),
                 _buildMenuItem(context, ref, 7, 'Settings', LucideIcons.settings, isActive: activeIndex == 7),
@@ -93,8 +95,9 @@ class _SidebarState extends ConsumerState<Sidebar> {
           const SizedBox(height: 12),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildBrandHeader(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -105,16 +108,27 @@ class _SidebarState extends ConsumerState<Sidebar> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: isDark ? Colors.white.withOpacity(0.1) : Colors.white,
-              borderRadius: BorderRadius.circular(10),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF6366F1).withOpacity(0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-            child: Icon(LucideIcons.menu, size: 28, color: isDark ? Colors.white : const Color(0xFF6366F1)),
+            child: const Icon(LucideIcons.layoutDashboard, size: 24, color: Colors.white),
           ),
           if (!widget.isCollapsed) ...[
-            const SizedBox(width: 16),
-            const Text(
+            const SizedBox(width: 14),
+            Text(
               'Mindware',
-              style: TextStyle(
+              style: GoogleFonts.outfit(
                 fontSize: 22,
                 fontWeight: FontWeight.w900,
                 color: Colors.white,
@@ -181,12 +195,19 @@ class _SidebarState extends ConsumerState<Sidebar> {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            color: isActive ? Colors.white.withOpacity(0.2) : Colors.transparent,
+            color: isActive ? Colors.white : Colors.transparent,
             borderRadius: BorderRadius.circular(14),
+            boxShadow: isActive ? [
+              BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4)),
+            ] : [],
           ),
           child: Row(
             children: [
-              Icon(icon, size: 20, color: isActive ? Colors.white : Colors.white.withOpacity(0.7)),
+              Icon(
+                icon, 
+                size: 20, 
+                color: isActive ? AppColors.primary : Colors.white.withOpacity(0.8),
+              ),
               if (!widget.isCollapsed) ...[
                 const SizedBox(width: 14),
                 Expanded(
@@ -194,8 +215,8 @@ class _SidebarState extends ConsumerState<Sidebar> {
                     title,
                     style: TextStyle(
                       fontSize: 15,
-                      fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                      color: isActive ? Colors.white : Colors.white.withOpacity(0.7),
+                      fontWeight: isActive ? FontWeight.w800 : FontWeight.w500,
+                      color: isActive ? AppColors.primary : Colors.white.withOpacity(0.8),
                     ),
                   ),
                 ),
@@ -203,12 +224,16 @@ class _SidebarState extends ConsumerState<Sidebar> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: isActive ? AppColors.primary.withOpacity(0.1) : Colors.white.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
                       count,
-                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800),
+                      style: TextStyle(
+                        color: isActive ? AppColors.primary : Colors.white, 
+                        fontSize: 10, 
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
               ],
@@ -292,20 +317,23 @@ class _SidebarState extends ConsumerState<Sidebar> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       child: InkWell(
         onTap: () => ref.read(navigationProvider.notifier).setIndex(index),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10),
         child: Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
-            color: isActive ? Colors.white.withOpacity(0.1) : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
+            color: isActive ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: isActive ? [
+              BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 2)),
+            ] : [],
           ),
           child: Text(
             title,
             style: TextStyle(
               fontSize: 13,
-              fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-              color: isActive ? Colors.white : Colors.white.withOpacity(0.6),
+              fontWeight: isActive ? FontWeight.w800 : FontWeight.w500,
+              color: isActive ? AppColors.primary : Colors.white.withOpacity(0.7),
             ),
           ),
         ),
