@@ -274,7 +274,7 @@ class CandidateDetailsScreen extends ConsumerWidget {
               Expanded(child: _buildActionCard(
                 context,
                 'Shortlist', 
-                LucideIcons.userCheck, 
+                LucideIcons.star, 
                 const [Color(0xFF10B981), Color(0xFF059669)], 
                 () => _handleStatusUpdate(context, ref, appId, 'shortlist')
               )),
@@ -283,7 +283,7 @@ class CandidateDetailsScreen extends ConsumerWidget {
                 context,
                 'Contacting', 
                 LucideIcons.phoneCall, 
-                const [Color(0xFFF59E0B), Color(0xFFD97706)], 
+                const [Color(0xFF3B82F6), Color(0xFF2563EB)], 
                 () => _handleStatusUpdate(context, ref, appId, 'contacting')
               )),
             ],
@@ -302,8 +302,8 @@ class CandidateDetailsScreen extends ConsumerWidget {
               Expanded(child: _buildActionCard(
                 context,
                 'Hire', 
-                LucideIcons.award, 
-                const [Color(0xFF8B5CF6), Color(0xFF7C3AED)], 
+                LucideIcons.userCheck, 
+                const [Color(0xFF10B981), Color(0xFF059669)], 
                 () => _handleStatusUpdate(context, ref, appId, 'hire')
               )),
             ],
@@ -323,7 +323,7 @@ class CandidateDetailsScreen extends ConsumerWidget {
                 context,
                 'Message', 
                 LucideIcons.messageSquare, 
-                const [Color(0xFF3B82F6), Color(0xFF2563EB)], 
+                const [Color(0xFF8B5CF6), Color(0xFF7C3AED)], 
                 () => _openMessaging(context, candId)
               )),
             ],
@@ -448,14 +448,14 @@ class CandidateDetailsScreen extends ConsumerWidget {
   }
 
   Widget _buildActionCard(BuildContext context, String label, IconData icon, List<Color> colors, VoidCallback onTap) {
+    final primaryColor = colors[0];
+    
     return Container(
       height: 52,
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: colors, begin: Alignment.topLeft, end: Alignment.bottomRight),
+        color: primaryColor.withOpacity(0.08),
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: colors[0].withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4)),
-        ],
+        border: Border.all(color: primaryColor.withOpacity(0.15), width: 1),
       ),
       child: Material(
         color: Colors.transparent,
@@ -465,11 +465,11 @@ class CandidateDetailsScreen extends ConsumerWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 18, color: Colors.white),
+              Icon(icon, size: 18, color: primaryColor),
               const SizedBox(width: 8),
               Text(
                 label,
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14),
+                style: TextStyle(color: primaryColor, fontWeight: FontWeight.w800, fontSize: 14),
               ),
             ],
           ),

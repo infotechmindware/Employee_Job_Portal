@@ -6,6 +6,7 @@ import 'screens/auth/login_screen.dart';
 import 'screens/auth/register_screen.dart';
 import 'screens/auth/forgot_password_screen.dart';
 import 'screens/main_layout.dart';
+import 'screens/subscription/subscription_plans_screen.dart';
 import 'providers/location_provider.dart';
 import 'providers/job_post_provider.dart';
 
@@ -54,6 +55,7 @@ class AdminApp extends StatelessWidget {
         '/register': (context) => const RegisterScreen(),
         '/forgot_password': (context) => const ForgotPasswordScreen(),
         '/dashboard': (context) => const MainLayout(),
+        '/subscription-plans': (context) => const SubscriptionPlansScreen(),
       },
     );
   }

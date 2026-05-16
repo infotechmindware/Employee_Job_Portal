@@ -278,9 +278,19 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF8FAFC),
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF1E293B), size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
       body: Stack(
         children: [
-          SingleChildScrollView(
+          SafeArea(
+            child: SingleChildScrollView(
             padding: EdgeInsets.all(isDesktop ? 48 : 16),
             child: Column(
               children: [
@@ -295,7 +305,8 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
               ],
             ),
           ),
-          if (_isProcessing)
+        ),
+        if (_isProcessing)
             Container(
               color: Colors.black.withOpacity(0.4),
               child: Center(

@@ -157,9 +157,9 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
               }).length;
             }
 
-            // Finally, filter by selected Tab
+            // Filter by selected Tab
             final currentTabName = _tabs[_selectedTab];
-            final filteredApps = currentTabName == 'All' 
+            var filteredApps = currentTabName == 'All' 
                 ? jobFiltered 
                 : jobFiltered.where((app) {
                     final s = app['status']?.toString().toLowerCase();
@@ -171,6 +171,34 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
                     if (currentTabName == 'Interviewed' && (s == 'interviewed' || s == 'interviewing' || s == 'interview')) return true;
                     return s == statusKey;
                   }).toList();
+
+            // Filter by Search Query (Case-insensitive & Real-time)
+            final query = _searchController.text.toLowerCase().trim();
+            if (query.isNotEmpty) {
+              filteredApps = filteredApps.where((app) {
+                final candidate = app['candidate'] ?? {};
+                final name = (candidate['full_name'] ?? app['full_name'] ?? "").toString().toLowerCase();
+                final email = (candidate['email'] ?? app['candidate_email'] ?? "").toString().toLowerCase();
+                final phone = (candidate['phone'] ?? candidate['mobile'] ?? app['candidate_mobile'] ?? "").toString().toLowerCase();
+                
+                // Skills search handling
+                String skillsStr = "";
+                final rawSkills = app['skills_data'] ?? candidate['skills'] ?? candidate['skills_data'] ?? [];
+                if (rawSkills is List) {
+                  skillsStr = rawSkills.map((e) {
+                    if (e is Map) return e['name']?.toString() ?? e.toString();
+                    return e.toString();
+                  }).join(', ').toLowerCase();
+                } else {
+                  skillsStr = rawSkills.toString().toLowerCase();
+                }
+                
+                return name.contains(query) || 
+                       email.contains(query) || 
+                       phone.contains(query) || 
+                       skillsStr.contains(query);
+              }).toList();
+            }
 
           return RefreshIndicator(
             onRefresh: () => ref.read(employerJobsProvider.notifier).fetchAll(),
@@ -773,26 +801,33 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
   Widget _buildUpgradeSection() {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF451A03).withOpacity(0.3) : const Color(0xFFFFFBEB),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? const Color(0xFFD97706).withOpacity(0.2) : const Color(0xFFFEF3C7)),
-      ),
-      child: Row(
-        children: [
-          const Icon(LucideIcons.sparkles, color: Color(0xFFD97706), size: 20),
-          const SizedBox(width: 12),
-          Expanded(child: Text('Upgrade to unlock contact details', style: TextStyle(color: isDark ? const Color(0xFFFDE68A) : const Color(0xFF92400E), fontWeight: FontWeight.w700, fontSize: 13))),
-          TextButton(
-            onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionPlansScreen()));
-            },
-            child: const Text('UPGRADE', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: Color(0xFFD97706))),
-          ),
-        ],
+    return GestureDetector(
+      onTap: () {
+        Navigator.pushNamed(context, '/subscription-plans');
+      },
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF451A03).withOpacity(0.3) : const Color(0xFFFFFBEB),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: isDark ? const Color(0xFFD97706).withOpacity(0.2) : const Color(0xFFFEF3C7)),
+        ),
+        child: Row(
+          children: [
+            const Icon(LucideIcons.sparkles, color: Color(0xFFD97706), size: 20),
+            const SizedBox(width: 12),
+            Expanded(child: Text('Upgrade to unlock contact details', style: TextStyle(color: isDark ? const Color(0xFFFDE68A) : const Color(0xFF92400E), fontWeight: FontWeight.w700, fontSize: 13))),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFD97706).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text('UPGRADE', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: Color(0xFFD97706))),
+            ),
+          ],
+        ),
       ),
     );
   }

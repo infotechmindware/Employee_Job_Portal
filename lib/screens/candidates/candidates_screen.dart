@@ -73,12 +73,31 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
             }).toList();
           }
 
-          // Filter by Search
+          // Filter by Search (Case-insensitive & Real-time)
           if (_searchQuery.isNotEmpty) {
+            final query = _searchQuery.toLowerCase().trim();
             apps = apps.where((a) {
-              final profile = a['candidate'] ?? {};
-              final name = (profile['full_name'] ?? a['candidate_name'] ?? '').toString().toLowerCase();
-              return name.contains(_searchQuery.toLowerCase());
+              final candidate = a['candidate'] ?? {};
+              final name = (candidate['full_name'] ?? a['candidate_name'] ?? '').toString().toLowerCase();
+              final email = (candidate['email'] ?? a['candidate_email'] ?? '').toString().toLowerCase();
+              final phone = (candidate['phone'] ?? candidate['mobile'] ?? a['candidate_mobile'] ?? '').toString().toLowerCase();
+              
+              // Skills search handling
+              String skillsStr = "";
+              final rawSkills = a['skills_data'] ?? candidate['skills'] ?? candidate['skills_data'] ?? [];
+              if (rawSkills is List) {
+                skillsStr = rawSkills.map((e) {
+                  if (e is Map) return e['name']?.toString() ?? e.toString();
+                  return e.toString();
+                }).join(', ').toLowerCase();
+              } else {
+                skillsStr = rawSkills.toString().toLowerCase();
+              }
+              
+              return name.contains(query) || 
+                     email.contains(query) || 
+                     phone.contains(query) || 
+                     skillsStr.contains(query);
             }).toList();
           }
 
