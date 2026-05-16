@@ -36,7 +36,7 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
   int _selectedTab = 0;
   String _selectedSortBy = 'Application date (newest first)';
   final TextEditingController _searchController = TextEditingController();
-  final List<String> _tabs = ['All', 'New', 'Contacting', 'Interviewed', 'Rejected', 'Hired', 'Shortlisted'];
+  final List<String> _tabs = ['All', 'New', 'Contacting', 'Interviewed', 'Rejected', 'Hired', 'Shortlist'];
 
   // Filter States
   String _filterLocation = '';
@@ -142,15 +142,17 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
           // Calculate counts for all tabs from job-filtered list
           Map<String, int> tabCounts = {};
           tabCounts['All'] = jobFiltered.length;
-            for (int i = 1; i < _tabs.length; i++) {
+                    for (int i = 1; i < _tabs.length; i++) {
               final tab = _tabs[i];
               // Map UI tab name to backend status
               String statusKey = tab.toLowerCase();
-              if (tab == 'Shortlisted') statusKey = 'shortlisted';
+              if (tab == 'Shortlist' || tab == 'Shortlisted') statusKey = 'shortlisted';
+              if (tab == 'Interviewed') statusKey = 'interviewing';
               
               tabCounts[tab] = jobFiltered.where((app) {
                 final s = app['status']?.toString().toLowerCase();
-                if (tab == 'New' && (s == 'applied' || s == 'new')) return true;
+                if (tab == 'New' && (s == 'applied' || s == 'new' || s == 'pending')) return true;
+                if (tab == 'Interviewed' && (s == 'interviewed' || s == 'interviewing' || s == 'interview')) return true;
                 return s == statusKey;
               }).length;
             }
@@ -162,8 +164,11 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
                 : jobFiltered.where((app) {
                     final s = app['status']?.toString().toLowerCase();
                     String statusKey = currentTabName.toLowerCase();
-                    if (currentTabName == 'Shortlisted') statusKey = 'shortlisted';
-                    if (currentTabName == 'New' && (s == 'applied' || s == 'new')) return true;
+                    if (currentTabName == 'Shortlist' || currentTabName == 'Shortlisted') statusKey = 'shortlisted';
+                    if (currentTabName == 'Interviewed') statusKey = 'interviewing';
+                    
+                    if (currentTabName == 'New' && (s == 'applied' || s == 'new' || s == 'pending')) return true;
+                    if (currentTabName == 'Interviewed' && (s == 'interviewed' || s == 'interviewing' || s == 'interview')) return true;
                     return s == statusKey;
                   }).toList();
 
@@ -1019,11 +1024,11 @@ class _StageDropdown extends ConsumerWidget {
     
     // Normalize status to our keys
     String normalizedStatus = status;
-    if (status == 'shortlisted') normalizedStatus = 'shortlist';
-    if (status == 'interviewed') normalizedStatus = 'schedule_interview';
+    if (status == 'shortlisted' || status == 'shortlist') normalizedStatus = 'shortlist';
+    if (status == 'interviewed' || status == 'interviewing' || status == 'interview') normalizedStatus = 'schedule_interview';
     if (status == 'rejected' || status == 'reject') normalizedStatus = 'reject';
     if (status == 'hired' || status == 'hire') normalizedStatus = 'hire';
-    if (status == 'applied' || status == 'new') normalizedStatus = 'new';
+    if (status == 'applied' || status == 'new' || status == 'pending') normalizedStatus = 'new';
     if (status == 'contacting') normalizedStatus = 'contacting';
 
     final stages = [
