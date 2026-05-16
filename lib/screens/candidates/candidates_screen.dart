@@ -68,7 +68,9 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
             final filterStatus = _tabsData[_selectedTab].toLowerCase();
             apps = apps.where((a) {
               final status = a['status']?.toString().toLowerCase() ?? 'applied';
-              if (filterStatus == 'new') return status == 'applied' || status == 'new';
+              if (filterStatus == 'new') return status == 'applied' || status == 'new' || status == 'fresh' || status == 'pending';
+              if (filterStatus == 'interviewed' || filterStatus == 'interview') return status == 'interviewed' || status == 'interviewing' || status == 'interview';
+              if (filterStatus == 'shortlisted' || filterStatus == 'shortlist') return status == 'shortlisted' || status == 'shortlist';
               return status == filterStatus;
             }).toList();
           }
@@ -141,7 +143,9 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
             final filterStatus = _tabsData[index].toLowerCase();
             count = relevantApps.where((a) {
               final status = a['status']?.toString().toLowerCase() ?? 'applied';
-              if (filterStatus == 'new') return status == 'applied' || status == 'new';
+              if (filterStatus == 'new') return status == 'applied' || status == 'new' || status == 'fresh' || status == 'pending';
+              if (filterStatus == 'interviewed' || filterStatus == 'interview') return status == 'interviewed' || status == 'interviewing' || status == 'interview';
+              if (filterStatus == 'shortlisted' || filterStatus == 'shortlist') return status == 'shortlisted' || status == 'shortlist';
               return status == filterStatus;
             }).length;
           }

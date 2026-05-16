@@ -97,6 +97,8 @@ class EmployerJobsNotifier extends Notifier<AsyncValue<EmployerJobsState>> {
         await fetchAll(showLoading: false);
         // Refresh dashboard statistics as well
         ref.invalidate(dashboardDataProvider);
+        // Ensure this provider is also invalidated for a clean refresh
+        ref.invalidateSelf(); 
       }
       return success;
     } catch (e) {

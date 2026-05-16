@@ -376,24 +376,36 @@ class JobService {
     dynamic candidateId,
     dynamic jobId,
   }) async {
+    print('========== STATUS UPDATE DEBUG ==========');
+    print('APPLICATION ID: $applicationId');
+    print('CANDIDATE ID: $candidateId');
+    print('JOB ID: $jobId');
+    print('STATUS BEFORE MAP: $status');
+
+    if (applicationId == null) {
+      print('ERROR: APPLICATION ID IS NULL');
+      return false;
+    }
+
     try {
       // Map action keys to backend status values if needed
       final Map<String, String> statusMapping = {
-        'shortlist': 'shortlisted',
-        'reject': 'rejected',
-        'schedule_interview': 'interviewed',
+        'new': 'applied',
+        'interview': 'interviewing',
+        'shortlisted': 'shortlisted',
         'contacting': 'contacting',
-        'hire': 'hired',
-        'new': 'applied'
+        'hired': 'hired',
+        'rejected': 'rejected',
       };
       
-      final String mappedStatus = statusMapping[status.toLowerCase()] ?? status;
+      final String mappedStatus = statusMapping[status.toLowerCase()] ?? status.toLowerCase();
+      print('MAPPED STATUS (API STATUS): $mappedStatus');
       
       // Robust multi-endpoint fallback strategy for status updates
       final endpoints = [
         // 1. Action-specific endpoints (High priority)
-        if (status == 'shortlist') '$baseUrl/employer/applications/$applicationId/shortlist',
-        if (status == 'reject') '$baseUrl/employer/applications/$applicationId/reject',
+        if (status == 'shortlist' || status == 'shortlisted') '$baseUrl/employer/applications/$applicationId/shortlist',
+        if (status == 'reject' || status == 'rejected') '$baseUrl/employer/applications/$applicationId/reject',
         
         // 2. Dedicated status update endpoint
         '$baseUrl/employer/applications/$applicationId/status',
@@ -442,7 +454,8 @@ class JobService {
             body: jsonEncode(requestBody),
           ).timeout(const Duration(seconds: 10));
 
-          print('📝 [API] Response (${response.statusCode}): ${response.body}');
+          print('STATUS CODE: ${response.statusCode}');
+          print('RESPONSE BODY: ${response.body}');
           
           if (response.statusCode == 200 || response.statusCode == 201) {
             final result = json.decode(response.body);

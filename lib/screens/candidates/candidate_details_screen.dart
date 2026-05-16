@@ -23,6 +23,7 @@ class CandidateDetailsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    print('DEBUG: CANDIDATE DETAILS JSON => ${jsonEncode(candidate)}');
     // Standardize mapping based on API response structure
     final profile = candidate['candidate'] ?? {};
     final job = candidate['job'] ?? {};
@@ -47,7 +48,8 @@ class CandidateDetailsScreen extends ConsumerWidget {
     final experience = _val(profile['experience'] ?? candidate['experience_years']);
     final education = _val(profile['education']);
     final expectedSalary = _val(profile['expected_salary']);
-    final status = candidate['status']?.toString().toLowerCase() ?? 'applied';
+    String status = candidate['status']?.toString().toLowerCase() ?? 'applied';
+    if (status == 'applied' || status == 'new' || status == 'pending' || status == 'fresh') status = 'new';
     
     // Image Handling
     String? imageUrl = profile['profile_image'] ?? candidate['profile_picture'];
@@ -276,7 +278,7 @@ class CandidateDetailsScreen extends ConsumerWidget {
                 'Shortlist', 
                 LucideIcons.star, 
                 const [Color(0xFF10B981), Color(0xFF059669)], 
-                () => _handleStatusUpdate(context, ref, appId, 'shortlist')
+                () => _handleStatusUpdate(context, ref, appId, 'shortlisted')
               )),
               const SizedBox(width: 12),
               Expanded(child: _buildActionCard(
@@ -296,7 +298,7 @@ class CandidateDetailsScreen extends ConsumerWidget {
                 'Reject', 
                 LucideIcons.userX, 
                 const [Color(0xFFEF4444), Color(0xFFDC2626)], 
-                () => _handleStatusUpdate(context, ref, appId, 'reject')
+                () => _handleStatusUpdate(context, ref, appId, 'rejected')
               )),
               const SizedBox(width: 12),
               Expanded(child: _buildActionCard(
@@ -304,7 +306,7 @@ class CandidateDetailsScreen extends ConsumerWidget {
                 'Hire', 
                 LucideIcons.userCheck, 
                 const [Color(0xFF10B981), Color(0xFF059669)], 
-                () => _handleStatusUpdate(context, ref, appId, 'hire')
+                () => _handleStatusUpdate(context, ref, appId, 'hired')
               )),
             ],
           ),
@@ -479,7 +481,11 @@ class CandidateDetailsScreen extends ConsumerWidget {
   }
 
   Future<void> _handleStatusUpdate(BuildContext context, WidgetRef ref, dynamic appId, String status) async {
-    if (appId == null) return;
+    if (appId == null) {
+       print('ERROR: APPLICATION ID IS NULL IN DETAILS SCREEN');
+       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error: Application ID not found')));
+       return;
+    }
     
     final profile = candidate['candidate'] ?? {};
     final candId = profile['id'] ?? candidate['candidate_id'];
@@ -487,6 +493,10 @@ class CandidateDetailsScreen extends ConsumerWidget {
     final jobId = job['id'] ?? candidate['job_id'];
 
     // Show immediate feedback
+    print('Selected Status: $status');
+    // Point 4: Removed optimistic update to prevent auto-revert confusion
+    // candidate['status'] = status; 
+
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text('Updating status to ${status.toUpperCase()}...'),
       duration: const Duration(milliseconds: 800),
@@ -494,7 +504,7 @@ class CandidateDetailsScreen extends ConsumerWidget {
     ));
 
     final success = await ref.read(employerJobsProvider.notifier).updateApplicationStatus(
-      applicationId: appId, 
+      applicationId: candidate['application_id'] ?? appId, 
       status: status,
       candidateId: candId,
       jobId: jobId,
@@ -641,7 +651,7 @@ class CandidateDetailsScreen extends ConsumerWidget {
                               // Automatically update status to interviewed and refresh
                               await ref.read(employerJobsProvider.notifier).updateApplicationStatus(
                                 applicationId: appId, 
-                                status: 'schedule_interview',
+                                status: 'interview',
                                 candidateId: candId,
                                 jobId: jobId,
                               );

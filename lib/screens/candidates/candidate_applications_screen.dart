@@ -151,8 +151,11 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
               
               tabCounts[tab] = jobFiltered.where((app) {
                 final s = app['status']?.toString().toLowerCase();
-                if (tab == 'New' && (s == 'applied' || s == 'new' || s == 'pending')) return true;
+                if (tab == 'New' && (s == 'applied' || s == 'new' || s == 'pending' || s == 'fresh')) return true;
                 if (tab == 'Interviewed' && (s == 'interviewed' || s == 'interviewing' || s == 'interview')) return true;
+                if (tab == 'Shortlist' || tab == 'Shortlisted') {
+                  return s == 'shortlisted' || s == 'shortlist';
+                }
                 return s == statusKey;
               }).length;
             }
@@ -167,8 +170,11 @@ class _CandidateApplicationsScreenState extends ConsumerState<CandidateApplicati
                     if (currentTabName == 'Shortlist' || currentTabName == 'Shortlisted') statusKey = 'shortlisted';
                     if (currentTabName == 'Interviewed') statusKey = 'interviewing';
                     
-                    if (currentTabName == 'New' && (s == 'applied' || s == 'new' || s == 'pending')) return true;
+                    if (currentTabName == 'New' && (s == 'applied' || s == 'new' || s == 'pending' || s == 'fresh')) return true;
                     if (currentTabName == 'Interviewed' && (s == 'interviewed' || s == 'interviewing' || s == 'interview')) return true;
+                    if (currentTabName == 'Shortlist' || currentTabName == 'Shortlisted') {
+                      return s == 'shortlisted' || s == 'shortlist';
+                    }
                     return s == statusKey;
                   }).toList();
 
@@ -922,6 +928,7 @@ class _CandidateCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    print('DEBUG: CANDIDATE CARD JSON => ${jsonEncode(app)}');
     final candidate = app['candidate'] ?? {};
     final job = app['job'] ?? {};
     final phone = candidate['phone'] ?? candidate['mobile'] ?? app['candidate_mobile'];
@@ -1055,24 +1062,26 @@ class _StageDropdown extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    print('DEBUG: CANDIDATE DETAILS JSON => ${jsonEncode(app['candidate'] ?? {})}');
+    // Standardize mapping based on API response structure
     final status = app['status']?.toString().toLowerCase() ?? 'applied';
     
     // Normalize status to our keys
     String normalizedStatus = status;
-    if (status == 'shortlisted' || status == 'shortlist') normalizedStatus = 'shortlist';
-    if (status == 'interviewed' || status == 'interviewing' || status == 'interview') normalizedStatus = 'schedule_interview';
-    if (status == 'rejected' || status == 'reject') normalizedStatus = 'reject';
-    if (status == 'hired' || status == 'hire') normalizedStatus = 'hire';
-    if (status == 'applied' || status == 'new' || status == 'pending') normalizedStatus = 'new';
+    if (status == 'shortlisted' || status == 'shortlist') normalizedStatus = 'shortlisted';
+    if (status == 'interviewed' || status == 'interviewing' || status == 'interview') normalizedStatus = 'interview';
+    if (status == 'rejected' || status == 'reject') normalizedStatus = 'rejected';
+    if (status == 'hired' || status == 'hire') normalizedStatus = 'hired';
+    if (status == 'applied' || status == 'new' || status == 'pending' || status == 'fresh') normalizedStatus = 'new';
     if (status == 'contacting') normalizedStatus = 'contacting';
 
     final stages = [
       {'label': 'New', 'key': 'new', 'color': Colors.grey},
-      {'label': 'Interview', 'key': 'schedule_interview', 'color': Colors.orange},
-      {'label': 'Shortlisted', 'key': 'shortlist', 'color': Colors.blue},
+      {'label': 'Interview', 'key': 'interview', 'color': Colors.orange},
+      {'label': 'Shortlisted', 'key': 'shortlisted', 'color': Colors.blue},
       {'label': 'Contacting', 'key': 'contacting', 'color': Colors.purple},
-      {'label': 'Hired', 'key': 'hire', 'color': Colors.green},
-      {'label': 'Rejected', 'key': 'reject', 'color': Colors.red},
+      {'label': 'Hired', 'key': 'hired', 'color': Colors.green},
+      {'label': 'Rejected', 'key': 'rejected', 'color': Colors.red},
     ];
 
     final currentStage = stages.firstWhere(
@@ -1084,6 +1093,11 @@ class _StageDropdown extends ConsumerWidget {
 
     return PopupMenuButton<String>(
       onSelected: (newKey) async {
+         print('Selected Status: $newKey');
+         
+         // Point 4: Removed optimistic update for better sync reliability
+         // app['status'] = newKey; 
+
          // Show a small snackbar or loading indicator
          ScaffoldMessenger.of(context).showSnackBar(
            SnackBar(
@@ -1095,7 +1109,7 @@ class _StageDropdown extends ConsumerWidget {
          );
          
          await ref.read(employerJobsProvider.notifier).updateApplicationStatus(
-           applicationId: app['id'],
+           applicationId: app['application_id'] ?? app['id'],
            status: newKey,
            candidateId: app['candidate_id'] ?? app['candidate']?['id'],
            jobId: app['job_id'] ?? app['job']?['id'],
