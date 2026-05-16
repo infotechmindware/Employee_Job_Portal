@@ -163,10 +163,21 @@ class SubscriptionService {
       ).timeout(const Duration(seconds: 15));
 
       final bodyData = jsonDecode(response.body);
+      
       if (response.statusCode == 200 || bodyData['success'] == true) {
+        // Requirement: Ensure API response parsing uses: final data = response['data'];
+        final data = bodyData['data'];
+        
+        if (data == null) {
+          return {
+            'success': false,
+            'message': 'No data received from server'
+          };
+        }
+
         return {
           'success': true,
-          'data': bodyData['data'] ?? bodyData,
+          'data': data, // Keep raw data for flexibility if needed, but UI will use model
         };
       }
       return {
@@ -174,7 +185,55 @@ class SubscriptionService {
         'message': bodyData['message'] ?? 'Failed to fetch billing overview'
       };
     } catch (e) {
-      print('❌ [Billing] Error: $e');
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> getTransactions({
+    String? from,
+    String? to,
+    String? status,
+    String? method,
+    String? product,
+    int page = 1,
+    int perPage = 20,
+  }) async {
+    try {
+      final auth = AuthService();
+      final token = await auth.getToken();
+      
+      var url = '$baseUrl/employer/billing/transactions?page=$page&per_page=$perPage';
+      if (from != null) url += '&from=$from';
+      if (to != null) url += '&to=$to';
+      if (status != null && status != 'All' && status != 'ALL') url += '&status=${status.toLowerCase()}';
+      if (method != null && method != 'ALL') url += '&method=${method.toLowerCase()}';
+      if (product != null && product != 'ALL') url += '&product=${product.toLowerCase()}';
+
+      print('🚀 [Transactions] Fetching: $url');
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      ).timeout(const Duration(seconds: 15));
+
+      final bodyData = jsonDecode(response.body);
+      
+      if (response.statusCode == 200 || bodyData['success'] == true) {
+        return {
+          'success': true,
+          'data': bodyData['data'],
+        };
+      }
+      return {
+        'success': false, 
+        'message': bodyData['message'] ?? 'Failed to fetch transactions'
+      };
+    } catch (e) {
+      print('❌ [Transactions] Error: $e');
       return {'success': false, 'message': 'Network error: $e'};
     }
   }

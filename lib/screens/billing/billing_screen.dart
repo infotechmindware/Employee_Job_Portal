@@ -1,101 +1,64 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_colors.dart';
 import '../../services/subscription_service.dart';
+import '../../models/billing_overview_model.dart';
+import '../../providers/billing_provider.dart';
 
-class BillingScreen extends StatefulWidget {
+class BillingScreen extends ConsumerStatefulWidget {
   const BillingScreen({super.key});
 
   @override
-  State<BillingScreen> createState() => _BillingScreenState();
+  ConsumerState<BillingScreen> createState() => _BillingScreenState();
 }
 
-class _BillingScreenState extends State<BillingScreen> {
-  bool _isLoading = true;
-  Map<String, dynamic>? _billingData;
-  String? _errorMessage;
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchBillingData();
-  }
-
-  Future<void> _fetchBillingData() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final response = await SubscriptionService.getBillingOverview();
-      if (mounted) {
-        if (response['success']) {
-          setState(() {
-            _billingData = response['data'];
-            _isLoading = false;
-          });
-        } else {
-          setState(() {
-            _errorMessage = response['message'];
-            _isLoading = false;
-          });
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = "An unexpected error occurred: $e";
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
+class _BillingScreenState extends ConsumerState<BillingScreen> {
   @override
   Widget build(BuildContext context) {
+    final billingAsync = ref.watch(billingOverviewProvider);
     final screenWidth = MediaQuery.of(context).size.width;
     final isDesktop = screenWidth > 1024;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: RefreshIndicator(
-        onRefresh: _fetchBillingData,
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : _errorMessage != null
-                ? _buildErrorState()
-                : SingleChildScrollView(
-                    padding: EdgeInsets.all(isDesktop ? 24 : 16),
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildHeader(isDesktop),
-                        const SizedBox(height: 32),
-                        _buildTopStats(isDesktop),
-                        const SizedBox(height: 32),
-                        _buildMainContent(isDesktop),
-                      ],
-                    ),
-                  ),
+        onRefresh: () => ref.read(billingOverviewProvider.notifier).refresh(),
+        child: billingAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, stack) => _buildErrorState(err.toString()),
+          data: (billing) => SingleChildScrollView(
+            padding: EdgeInsets.all(isDesktop ? 24 : 16),
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(isDesktop),
+                const SizedBox(height: 32),
+                _buildTopStats(isDesktop, billing),
+                const SizedBox(height: 32),
+                _buildMainContent(isDesktop, billing),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildErrorState() {
+  Widget _buildErrorState(String message) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Icon(LucideIcons.alertCircle, size: 48, color: Colors.redAccent),
           const SizedBox(height: 16),
-          Text(_errorMessage ?? "Something went wrong", style: const TextStyle(fontSize: 16)),
+          Text(message, style: const TextStyle(fontSize: 16), textAlign: TextAlign.center),
           const SizedBox(height: 24),
           ElevatedButton(
-            onPressed: _fetchBillingData,
+            onPressed: () => ref.read(billingOverviewProvider.notifier).fetchBillingOverview(),
             child: const Text("Retry"),
           )
         ],
@@ -129,15 +92,14 @@ class _BillingScreenState extends State<BillingScreen> {
     );
   }
 
-  Widget _buildTopStats(bool isDesktop) {
-    final overview = _billingData?['overview'] ?? {};
-    final subscription = _billingData?['subscription'] ?? {};
-    
+  Widget _buildTopStats(bool isDesktop, BillingOverview billing) {
     final stats = [
       {
         'title': 'Current Plan',
-        'value': subscription['plan_name'] ?? overview['current_plan'] ?? 'Free',
-        'subtitle': 'Renewal: ${subscription['next_billing_date'] ?? '—'}',
+        'value': billing.currentPlan ?? 'Free',
+        'subtitle': billing.subscription?['next_billing_date'] != null 
+            ? 'Renewal: ${billing.subscription!['next_billing_date']}' 
+            : 'No active subscription',
         'icon': LucideIcons.layers,
         'color': const Color(0xFF6366F1),
         'bgColor': const Color(0xFFF5F3FF),
@@ -146,8 +108,8 @@ class _BillingScreenState extends State<BillingScreen> {
       },
       {
         'title': 'Balance Due',
-        'value': '₹${overview['balance_due'] ?? '0.00'}',
-        'subtitle': overview['balance_due_text'] ?? 'No pending dues',
+        'value': '₹${billing.balanceDue.toStringAsFixed(2)}',
+        'subtitle': billing.balanceDue > 0 ? 'Payment due soon' : 'No pending dues',
         'icon': LucideIcons.wallet,
         'color': const Color(0xFF10B981),
         'bgColor': const Color(0xFFF0FDF4),
@@ -156,8 +118,8 @@ class _BillingScreenState extends State<BillingScreen> {
       },
       {
         'title': 'Upcoming Payment',
-        'value': '₹${overview['upcoming_payment_amount'] ?? '0.00'}',
-        'subtitle': overview['upcoming_payment_date'] != null ? 'On: ${overview['upcoming_payment_date']}' : 'No upcoming payments',
+        'value': '₹${(billing.upcomingAmount ?? 0.00).toStringAsFixed(2)}',
+        'subtitle': billing.upcomingDate != null ? 'On: ${billing.upcomingDate}' : 'No upcoming payments',
         'icon': LucideIcons.calendar,
         'color': const Color(0xFF3B82F6),
         'bgColor': const Color(0xFFEFF6FF),
@@ -166,8 +128,10 @@ class _BillingScreenState extends State<BillingScreen> {
       },
       {
         'title': 'Last Payment',
-        'value': '₹${overview['last_payment_amount'] ?? '0.00'}',
-        'subtitle': overview['last_payment_date'] != null ? 'On: ${overview['last_payment_date']}' : 'No payment yet',
+        'value': '₹${(billing.lastPayment?.amount ?? 0.00).toStringAsFixed(2)}',
+        'subtitle': billing.lastPayment != null 
+            ? 'On: ${billing.lastPayment!.createdAt ?? '—'}' 
+            : 'No payment yet',
         'icon': LucideIcons.creditCard,
         'color': const Color(0xFFF59E0B),
         'bgColor': const Color(0xFFFFFBEB),
@@ -296,13 +260,13 @@ class _BillingScreenState extends State<BillingScreen> {
     );
   }
 
-  Widget _buildMainContent(bool isDesktop) {
+  Widget _buildMainContent(bool isDesktop, BillingOverview billing) {
     if (!isDesktop) {
       return Column(
         children: [
-          _buildRecentTransactions(),
+          _buildRecentTransactions(billing),
           const SizedBox(height: 24),
-          _buildAlerts(),
+          _buildAlerts(billing),
         ],
       );
     }
@@ -310,15 +274,15 @@ class _BillingScreenState extends State<BillingScreen> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(flex: 2, child: _buildRecentTransactions()),
+        Expanded(flex: 2, child: _buildRecentTransactions(billing)),
         const SizedBox(width: 24),
-        Expanded(flex: 1, child: _buildAlerts()),
+        Expanded(flex: 1, child: _buildAlerts(billing)),
       ],
     );
   }
 
-  Widget _buildRecentTransactions() {
-    final transactions = (_billingData?['recent_transactions'] as List?) ?? [];
+  Widget _buildRecentTransactions(BillingOverview billing) {
+    final transactions = billing.recentTransactions;
 
     return Container(
       width: double.infinity,
@@ -477,7 +441,7 @@ class _BillingScreenState extends State<BillingScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF6366F1).withOpacity(0.35),
+            color: Color(0xFF6366F1).withOpacity(0.35),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
@@ -511,8 +475,8 @@ class _BillingScreenState extends State<BillingScreen> {
     );
   }
 
-  Widget _buildTransactionItem(Map<String, dynamic> tx) {
-    final String status = (tx['status'] ?? 'pending').toString().toLowerCase();
+  Widget _buildTransactionItem(Transaction tx) {
+    final String status = (tx.status ?? 'pending').toString().toLowerCase();
     Color statusColor = const Color(0xFF64748B);
     Color statusBg = const Color(0xFFF1F5F9);
 
@@ -552,31 +516,31 @@ class _BillingScreenState extends State<BillingScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  tx['description'] ?? 'Subscription Payment',
-                  style: GoogleFonts.inter(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF0F172A),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  tx['date'] ?? '—',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: const Color(0xFF94A3B8),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '₹${tx['amount'] ?? '0.00'}',
+                tx.description ?? 'Subscription Payment',
                 style: GoogleFonts.inter(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF0F172A),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                tx.date ?? '—',
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  color: const Color(0xFF94A3B8),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              '₹${tx.amount.toStringAsFixed(2)}',
+              style: GoogleFonts.inter(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
                   color: const Color(0xFF0F172A),
@@ -636,8 +600,8 @@ class _BillingScreenState extends State<BillingScreen> {
     );
   }
 
-  Widget _buildAlerts() {
-    final alerts = (_billingData?['alerts'] as List?) ?? [];
+  Widget _buildAlerts(BillingOverview billing) {
+    final alerts = billing.alerts;
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -675,11 +639,11 @@ class _BillingScreenState extends State<BillingScreen> {
           ...alerts.map((alert) => Padding(
             padding: const EdgeInsets.only(bottom: 16),
             child: _buildAlertItem(
-              alert['message'] ?? 'Alert',
-              alert['action_text'],
-              alert['type'] == 'error' ? const Color(0xFFFEF2F2) : const Color(0xFFFFFBEB),
-              alert['type'] == 'error' ? const Color(0xFFEF4444) : const Color(0xFFF59E0B),
-              alert['type'] == 'error' ? LucideIcons.alertCircle : LucideIcons.info,
+              alert.message,
+              alert.actionText,
+              alert.type == 'error' ? const Color(0xFFFEF2F2) : const Color(0xFFFFFBEB),
+              alert.type == 'error' ? const Color(0xFFEF4444) : const Color(0xFFF59E0B),
+              alert.type == 'error' ? LucideIcons.alertCircle : LucideIcons.info,
             ),
           )),
         const SizedBox(height: 32),

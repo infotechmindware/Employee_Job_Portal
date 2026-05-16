@@ -1,20 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../theme/app_colors.dart';
+import '../../providers/billing_provider.dart';
+import '../../models/billing_overview_model.dart';
 
-class MySubscriptionScreen extends StatefulWidget {
+class MySubscriptionScreen extends ConsumerStatefulWidget {
   const MySubscriptionScreen({super.key});
 
   @override
-  State<MySubscriptionScreen> createState() => _MySubscriptionScreenState();
+  ConsumerState<MySubscriptionScreen> createState() => _MySubscriptionScreenState();
 }
 
-class _MySubscriptionScreenState extends State<MySubscriptionScreen> {
-  final bool _hasActiveSubscription = true; // Set to true for demonstration
+class _MySubscriptionScreenState extends ConsumerState<MySubscriptionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final billingAsync = ref.watch(billingOverviewProvider);
     final theme = Theme.of(context);
     final size = MediaQuery.of(context).size;
     final isMobile = size.width < 600;
@@ -22,18 +25,22 @@ class _MySubscriptionScreenState extends State<MySubscriptionScreen> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(isMobile ? 20 : 32, 12, isMobile ? 20 : 32, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(theme),
-              const SizedBox(height: 24),
-              if (!_hasActiveSubscription)
-                _buildEmptyState(theme)
-              else
-                _buildActiveSubscription(theme),
-            ],
+        child: billingAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, stack) => Center(child: Text('Error: $err')),
+          data: (billing) => SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(isMobile ? 20 : 32, 12, isMobile ? 20 : 32, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(theme),
+                const SizedBox(height: 24),
+                if (billing.subscription == null)
+                  _buildEmptyState(theme)
+                else
+                  _buildActiveSubscription(theme, billing),
+              ],
+            ),
           ),
         ),
       ),
@@ -186,15 +193,15 @@ class _MySubscriptionScreenState extends State<MySubscriptionScreen> {
     );
   }
 
-  Widget _buildActiveSubscription(ThemeData theme) {
+  Widget _buildActiveSubscription(ThemeData theme, BillingOverview billing) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildCurrentPlanCard(theme),
+        _buildCurrentPlanCard(theme, billing),
         const SizedBox(height: 32),
         _buildQuickActions(theme),
         const SizedBox(height: 32),
-        _buildUsageOverview(theme),
+        _buildUsageOverview(theme, billing),
       ],
     );
   }
@@ -266,7 +273,10 @@ class _MySubscriptionScreenState extends State<MySubscriptionScreen> {
     );
   }
 
-  Widget _buildCurrentPlanCard(ThemeData theme) {
+  Widget _buildCurrentPlanCard(ThemeData theme, BillingOverview billing) {
+    final planName = billing.currentPlan ?? 'Free Plan';
+    final renewalDate = billing.subscription?['next_billing_date'] ?? 'N/A';
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -312,7 +322,7 @@ class _MySubscriptionScreenState extends State<MySubscriptionScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Professional Pro',
+            planName,
             style: GoogleFonts.inter(
               fontSize: 28,
               fontWeight: FontWeight.bold,
@@ -321,7 +331,7 @@ class _MySubscriptionScreenState extends State<MySubscriptionScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Renews on June 15, 2026',
+            'Renews on $renewalDate',
             style: GoogleFonts.inter(
               fontSize: 14,
               color: Colors.white.withOpacity(0.7),
@@ -332,7 +342,10 @@ class _MySubscriptionScreenState extends State<MySubscriptionScreen> {
     );
   }
 
-  Widget _buildUsageOverview(ThemeData theme) {
+  Widget _buildUsageOverview(ThemeData theme, BillingOverview billing) {
+    // Usage data might not be directly in billing overview, using fallback but wired to model if available
+    final usage = billing.subscription?['usage'] ?? {};
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -345,9 +358,9 @@ class _MySubscriptionScreenState extends State<MySubscriptionScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        _buildUsageItem(theme, 'Active Jobs', 8, 10, LucideIcons.briefcase),
-        _buildUsageItem(theme, 'Candidate Views', 145, 500, LucideIcons.users),
-        _buildUsageItem(theme, 'Email Credits', 850, 1000, LucideIcons.mail),
+        _buildUsageItem(theme, 'Active Jobs', usage['active_jobs'] ?? 0, usage['total_jobs'] ?? 10, LucideIcons.briefcase),
+        _buildUsageItem(theme, 'Candidate Views', usage['views'] ?? 0, usage['total_views'] ?? 500, LucideIcons.users),
+        _buildUsageItem(theme, 'Email Credits', usage['emails'] ?? 0, usage['total_emails'] ?? 1000, LucideIcons.mail),
       ],
     );
   }

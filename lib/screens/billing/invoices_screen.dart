@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../theme/app_colors.dart';
 import '../../providers/navigation_provider.dart';
+import '../../providers/billing_provider.dart';
+import '../../models/billing_overview_model.dart';
 
 class InvoicesScreen extends ConsumerStatefulWidget {
   const InvoicesScreen({super.key});
@@ -18,81 +20,39 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
   String _selectedStatus = 'All';
   bool _isFiltering = false;
 
-  final List<Map<String, dynamic>> _allInvoices = [
-    {
-      'id': '1',
-      'invoiceId': '#INV-2024-001',
-      'date': DateTime(2024, 5, 12),
-      'amount': 4999.00,
-      'status': 'Completed',
-      'plan': 'Pro Monthly',
-    },
-    {
-      'id': '2',
-      'invoiceId': '#INV-2024-002',
-      'date': DateTime(2024, 5, 10),
-      'amount': 999.00,
-      'status': 'Failed',
-      'plan': 'Basic Trial',
-    },
-    {
-      'id': '3',
-      'invoiceId': '#INV-2024-003',
-      'date': DateTime(2024, 4, 28),
-      'amount': 14999.00,
-      'status': 'Completed',
-      'plan': 'Enterprise Yearly',
-    },
-    {
-      'id': '4',
-      'invoiceId': '#INV-2024-004',
-      'date': DateTime(2024, 4, 15),
-      'amount': 4999.00,
-      'status': 'Refunded',
-      'plan': 'Pro Monthly',
-    },
-    {
-      'id': '5',
-      'invoiceId': '#INV-2024-005',
-      'date': DateTime(2024, 4, 02),
-      'amount': 4999.00,
-      'status': 'Pending',
-      'plan': 'Pro Monthly',
-    },
-    {
-      'id': '6',
-      'invoiceId': '#INV-2024-006',
-      'date': DateTime(2024, 3, 20),
-      'amount': 2999.00,
-      'status': 'Completed',
-      'plan': 'Business Plus',
-    },
-  ];
-
-  late List<Map<String, dynamic>> _filteredInvoices;
+  List<Invoice> _allInvoices = [];
+  List<Invoice> _filteredInvoices = [];
 
   @override
   void initState() {
     super.initState();
-    _filteredInvoices = List.from(_allInvoices);
+    _filteredInvoices = [];
+  }
+
+  void _syncInvoices(List<Invoice> invoices) {
+    if (_allInvoices.length != invoices.length) {
+      _allInvoices = invoices;
+      _filteredInvoices = List.from(_allInvoices);
+    }
   }
 
   void _applyFilters() {
     setState(() => _isFiltering = true);
     
-    // Simulate API delay
     Future.delayed(const Duration(milliseconds: 600), () {
       if (!mounted) return;
       setState(() {
         _filteredInvoices = _allInvoices.where((invoice) {
-          final date = invoice['date'] as DateTime;
-          final status = invoice['status'] as String;
+          final dateStr = invoice.date;
+          if (dateStr == null) return true;
+          final date = DateTime.tryParse(dateStr) ?? DateTime.now();
+          final status = invoice.status ?? 'All';
 
           bool dateMatch = true;
           if (_fromDate != null && date.isBefore(_fromDate!)) dateMatch = false;
           if (_toDate != null && date.isAfter(_toDate!.add(const Duration(days: 1)))) dateMatch = false;
 
-          bool statusMatch = _selectedStatus == 'All' || status == _selectedStatus;
+          bool statusMatch = _selectedStatus == 'All' || status.toLowerCase() == _selectedStatus.toLowerCase();
 
           return dateMatch && statusMatch;
         }).toList();
@@ -142,25 +102,33 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final billingAsync = ref.watch(billingOverviewProvider);
     final screenWidth = MediaQuery.of(context).size.width;
     final isDesktop = screenWidth > 1024;
     final theme = Theme.of(context);
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(isDesktop ? 32 : 16),
-        physics: const ClampingScrollPhysics(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(theme),
-            const SizedBox(height: 32),
-            _buildFiltersCard(isDesktop, theme),
-            const SizedBox(height: 32),
-            _buildInvoicesSection(theme),
-          ],
-        ),
+      body: billingAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, stack) => Center(child: Text('Error: $err')),
+        data: (billing) {
+          _syncInvoices(billing.invoices);
+          return SingleChildScrollView(
+            padding: EdgeInsets.all(isDesktop ? 32 : 16),
+            physics: const ClampingScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(theme),
+                const SizedBox(height: 32),
+                _buildFiltersCard(isDesktop, theme),
+                const SizedBox(height: 32),
+                _buildInvoicesSection(theme),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -610,21 +578,23 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
     );
   }
 
-  Widget _buildInvoiceCard(Map<String, dynamic> invoice, ThemeData theme) {
-    final status = invoice['status'] as String;
+  Widget _buildInvoiceCard(Invoice invoice, ThemeData theme) {
+    final status = invoice.status ?? 'Pending';
     final Color statusColor;
     final IconData statusIcon;
 
-    switch (status) {
-      case 'Completed':
+    switch (status.toLowerCase()) {
+      case 'completed':
+      case 'paid':
+      case 'success':
         statusColor = const Color(0xFF10B981);
         statusIcon = LucideIcons.checkCircle;
         break;
-      case 'Failed':
+      case 'failed':
         statusColor = const Color(0xFFEF4444);
         statusIcon = LucideIcons.xCircle;
         break;
-      case 'Pending':
+      case 'pending':
         statusColor = const Color(0xFFF59E0B);
         statusIcon = LucideIcons.clock;
         break;
@@ -668,11 +638,11 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        invoice['invoiceId'],
+                        invoice.invoiceNumber ?? 'INV-${invoice.id ?? '000'}',
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: theme.colorScheme.onSurface),
                       ),
                       Text(
-                        DateFormat('dd MMM, yyyy').format(invoice['date']),
+                        invoice.date != null ? DateFormat('dd MMM, yyyy').format(DateTime.parse(invoice.date!)) : '—',
                         style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.4), fontWeight: FontWeight.w600),
                       ),
                     ],
@@ -691,7 +661,7 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
                     Icon(statusIcon, size: 12, color: statusColor),
                     const SizedBox(width: 6),
                     Text(
-                      status,
+                      status.toUpperCase(),
                       style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: statusColor),
                     ),
                   ],
@@ -714,7 +684,7 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    invoice['plan'],
+                    'Subscription Plan',
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface),
                   ),
                 ],
@@ -728,7 +698,7 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '₹${(invoice['amount'] as double).toStringAsFixed(2)}',
+                    '₹${invoice.amount.toStringAsFixed(2)}',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.primary),
                   ),
                 ],
@@ -740,7 +710,7 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () {},
+                  onPressed: invoice.pdfUrl != null ? () {} : null,
                   icon: const Icon(LucideIcons.download, size: 16),
                   label: const Text('Download PDF', style: TextStyle(fontWeight: FontWeight.w800)),
                   style: OutlinedButton.styleFrom(
