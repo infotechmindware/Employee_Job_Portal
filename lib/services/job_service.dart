@@ -625,7 +625,7 @@ class JobService {
           'X-Requested-With': 'XMLHttpRequest',
         },
         body: jsonEncode(data),
-      ).timeout(const Duration(seconds: 20));
+      ).timeout(const Duration(seconds: 10));
 
       print('📡 [API] Reschedule Interview Status: ${response.statusCode}');
       print('📦 [API] Reschedule Interview Body: ${response.body}');

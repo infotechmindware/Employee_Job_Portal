@@ -10,6 +10,7 @@ import '../../widgets/common/custom_avatar.dart';
 import '../candidates/candidate_details_screen.dart';
 import 'package:jitsi_meet_wrapper/jitsi_meet_wrapper.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class InterviewsScreen extends ConsumerStatefulWidget {
   const InterviewsScreen({super.key});
@@ -33,11 +34,13 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
     _fetchInterviews();
   }
 
-  Future<void> _fetchInterviews() async {
-    setState(() {
-      _isLoading = true;
-      _interviews = []; // Clear old list before loading new data
-    });
+  Future<void> _fetchInterviews({bool showLoader = true}) async {
+    if (showLoader) {
+      setState(() {
+        _isLoading = true;
+        _interviews = []; // Clear old list before loading new data
+      });
+    }
 
     final tabName = _tabs[_selectedTab];
     String? statusParam;
@@ -56,11 +59,13 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
     }
 
     final result = await JobService.getEmployerInterviews(status: statusParam);
-    setState(() {
-      _interviews = result['interviews'] ?? [];
-      _apiStats = result['stats'] ?? {};
-      _isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _interviews = result['interviews'] ?? [];
+        _apiStats = result['stats'] ?? {};
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _joinInterviewRoom(
@@ -107,182 +112,337 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
     final id = interview['id'];
     if (id == null) return;
 
+    Map<String, dynamic> details = interview is Map<String, dynamic> 
+        ? interview 
+        : Map<String, dynamic>.from(interview);
+
     DateTime? selectedDate;
     TimeOfDay? selectedStartTime;
     TimeOfDay? selectedEndTime;
+    String selectedTimezone = details['timezone']?.toString() ?? 'Asia/Kolkata (IST)';
+    if (selectedTimezone.isEmpty) selectedTimezone = 'Asia/Kolkata (IST)';
+    final locationController = TextEditingController(text: details['location']?.toString() ?? '');
+    final meetingLinkController = TextEditingController(text: details['meeting_url']?.toString() ?? details['meeting_link']?.toString() ?? '');
 
-    await showDialog(
-      context: context,
-      builder: (dialogCtx) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: const Text(
-                'Reschedule Interview',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(LucideIcons.calendar, color: AppColors.primary),
-                    title: Text(
-                      selectedDate == null
-                          ? 'Select Date'
-                          : DateFormat('MMM dd, yyyy').format(selectedDate!),
-                      style: const TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                    trailing: const Icon(LucideIcons.chevronRight, size: 16),
-                    onTap: () async {
-                      final date = await showDatePicker(
-                        context: context,
-                        initialDate: DateTime.now(),
-                        firstDate: DateTime.now(),
-                        lastDate: DateTime.now().add(const Duration(days: 365)),
-                      );
-                      if (date != null) {
-                        setDialogState(() {
-                          selectedDate = date;
-                        });
-                      }
-                    },
-                  ),
-                  const Divider(),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(LucideIcons.clock, color: AppColors.primary),
-                    title: Text(
-                      selectedStartTime == null
-                          ? 'Select Start Time'
-                          : selectedStartTime!.format(context),
-                      style: const TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                    trailing: const Icon(LucideIcons.chevronRight, size: 16),
-                    onTap: () async {
-                      final time = await showTimePicker(
-                        context: context,
-                        initialTime: TimeOfDay.now(),
-                      );
-                      if (time != null) {
-                        setDialogState(() {
-                          selectedStartTime = time;
-                        });
-                      }
-                    },
-                  ),
-                  const Divider(),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(LucideIcons.clock, color: AppColors.primary),
-                    title: Text(
-                      selectedEndTime == null
-                          ? 'Select End Time'
-                          : selectedEndTime!.format(context),
-                      style: const TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                    trailing: const Icon(LucideIcons.chevronRight, size: 16),
-                    onTap: () async {
-                      final time = await showTimePicker(
-                        context: context,
-                        initialTime: TimeOfDay.now().replacing(hour: (TimeOfDay.now().hour + 1) % 24),
-                      );
-                      if (time != null) {
-                        setDialogState(() {
-                          selectedEndTime = time;
-                        });
-                      }
-                    },
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogCtx),
-                  child: const Text('Cancel', style: TextStyle(color: Color(0xFF64748B))),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  onPressed: (selectedDate == null || selectedStartTime == null || selectedEndTime == null)
-                      ? null
-                      : () async {
-                          Navigator.pop(dialogCtx);
+    try {
+      if (details['scheduled_start'] != null) {
+        final start = DateTime.parse(details['scheduled_start']);
+        selectedDate = start;
+        selectedStartTime = TimeOfDay.fromDateTime(start);
+      } else if (details['date'] != null && details['start_time'] != null) {
+        final start = DateTime.parse('${details['date']} ${details['start_time']}');
+        selectedDate = start;
+        selectedStartTime = TimeOfDay.fromDateTime(start);
+      }
+      if (details['scheduled_end'] != null) {
+        final end = DateTime.parse(details['scheduled_end']);
+        selectedEndTime = TimeOfDay.fromDateTime(end);
+      } else if (details['date'] != null && details['end_time'] != null) {
+        final end = DateTime.parse('${details['date']} ${details['end_time']}');
+        selectedEndTime = TimeOfDay.fromDateTime(end);
+      }
+    } catch (_) {}
 
-                          showDialog(
-                            context: context,
-                            barrierDismissible: false,
-                            builder: (context) => const Center(
-                              child: CircularProgressIndicator(color: Colors.white),
+    final List<String> timezones = [
+      'Asia/Kolkata (IST)',
+      'America/New_York (EST)',
+      'Europe/London (GMT)',
+      'Australia/Sydney (AEST)',
+      'UTC'
+    ];
+    if (!timezones.contains(selectedTimezone)) timezones.add(selectedTimezone);
+
+    if (mounted) {
+      await showDialog(
+        context: context,
+        builder: (dialogCtx) {
+          return StatefulBuilder(
+            builder: (context, setDialogState) {
+              final theme = Theme.of(context);
+              return Dialog(
+                backgroundColor: Colors.transparent,
+                insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                child: Container(
+                  width: 500,
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: theme.cardColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Reschedule Interview',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface),
                             ),
-                          );
-
-                          bool success = false;
-                          String errorMsg = '';
-
-                          try {
-                            final startDateTime = DateTime(
-                              selectedDate!.year,
-                              selectedDate!.month,
-                              selectedDate!.day,
-                              selectedStartTime!.hour,
-                              selectedStartTime!.minute,
+                            IconButton(
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              icon: const Icon(LucideIcons.x, size: 20),
+                              onPressed: () => Navigator.pop(dialogCtx),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        
+                        Text('Date *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface)),
+                        const SizedBox(height: 8),
+                        InkWell(
+                          onTap: () async {
+                            final date = await showDatePicker(
+                              context: context,
+                              initialDate: selectedDate ?? DateTime.now(),
+                              firstDate: DateTime.now(),
+                              lastDate: DateTime.now().add(const Duration(days: 365)),
                             );
-
-                            final endDateTime = DateTime(
-                              selectedDate!.year,
-                              selectedDate!.month,
-                              selectedDate!.day,
-                              selectedEndTime!.hour,
-                              selectedEndTime!.minute,
-                            );
-
-                            final Map<String, dynamic> rescheduleData = {
-                              'scheduled_start': startDateTime.toIso8601String(),
-                              'scheduled_end': endDateTime.toIso8601String(),
-                            };
-
-                            success = await JobService.rescheduleInterview(id, rescheduleData);
-                          } catch (e) {
-                            success = false;
-                            errorMsg = e.toString();
-                          } finally {
-                            if (mounted) {
-                              Navigator.pop(context); // Dismiss loading spinner
+                            if (date != null) {
+                              setDialogState(() {
+                                selectedDate = date;
+                              });
                             }
-                          }
-
-                          if (success) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Interview rescheduled successfully!'),
-                                backgroundColor: Colors.green,
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: theme.dividerColor.withOpacity(0.2)),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  selectedDate == null ? 'Select Date' : DateFormat('dd-MM-yyyy').format(selectedDate!),
+                                  style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 13),
+                                ),
+                                const Icon(LucideIcons.calendar, size: 16),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Start Time *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface)),
+                                  const SizedBox(height: 8),
+                                  InkWell(
+                                    onTap: () async {
+                                      final time = await showTimePicker(
+                                        context: context,
+                                        initialTime: selectedStartTime ?? TimeOfDay.now(),
+                                      );
+                                      if (time != null) {
+                                        setDialogState(() => selectedStartTime = time);
+                                      }
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                      decoration: BoxDecoration(
+                                        border: Border.all(color: theme.dividerColor.withOpacity(0.2)),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            selectedStartTime == null ? 'Time' : selectedStartTime!.format(context),
+                                            style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 13),
+                                          ),
+                                          const Icon(LucideIcons.clock, size: 16),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            );
-                            _fetchInterviews();
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(errorMsg.isNotEmpty
-                                    ? 'Failed to reschedule: $errorMsg'
-                                    : 'Failed to reschedule interview.'),
-                                backgroundColor: Colors.red,
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('End Time *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface)),
+                                  const SizedBox(height: 8),
+                                  InkWell(
+                                    onTap: () async {
+                                      final time = await showTimePicker(
+                                        context: context,
+                                        initialTime: selectedEndTime ?? (selectedStartTime != null ? selectedStartTime!.replacing(hour: (selectedStartTime!.hour + 1) % 24) : TimeOfDay.now()),
+                                      );
+                                      if (time != null) {
+                                        setDialogState(() => selectedEndTime = time);
+                                      }
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                      decoration: BoxDecoration(
+                                        border: Border.all(color: theme.dividerColor.withOpacity(0.2)),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            selectedEndTime == null ? 'Time' : selectedEndTime!.format(context),
+                                            style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 13),
+                                          ),
+                                          const Icon(LucideIcons.clock, size: 16),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            );
-                          }
-                        },
-                  child: const Text('Reschedule'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        
+                        Text('Timezone', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface)),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: theme.dividerColor.withOpacity(0.2)),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              isExpanded: true,
+                              value: selectedTimezone,
+                              icon: const Icon(LucideIcons.chevronDown, size: 16),
+                              style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface),
+                              dropdownColor: theme.cardColor,
+                              items: timezones.map((tz) => DropdownMenuItem(value: tz, child: Text(tz))).toList(),
+                              onChanged: (val) {
+                                if (val != null) setDialogState(() => selectedTimezone = val);
+                              },
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        
+                        Text('Location', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface)),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: locationController,
+                          style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface),
+                          decoration: InputDecoration(
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: theme.dividerColor.withOpacity(0.2))),
+                            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: theme.dividerColor.withOpacity(0.2))),
+                            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFFF97316))),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        
+                        Text('Meeting Link', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface)),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: meetingLinkController,
+                          style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface),
+                          decoration: InputDecoration(
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: theme.dividerColor.withOpacity(0.2))),
+                            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: theme.dividerColor.withOpacity(0.2))),
+                            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFFF97316))),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(dialogCtx),
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6), side: BorderSide(color: theme.dividerColor.withOpacity(0.2))),
+                                foregroundColor: theme.colorScheme.onSurface,
+                              ),
+                              child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                            ),
+                            const SizedBox(width: 12),
+                            ElevatedButton(
+                              onPressed: (selectedDate == null || selectedStartTime == null || selectedEndTime == null) ? null : () async {
+                                Navigator.pop(dialogCtx);
+                                
+                                showDialog(
+                                  context: context,
+                                  barrierDismissible: false,
+                                  builder: (context) => const Center(child: CircularProgressIndicator(color: Colors.white)),
+                                );
+                                
+                                bool success = false;
+                                String errorMsg = '';
+                                
+                                try {
+                                  final startDateTime = DateTime(
+                                    selectedDate!.year, selectedDate!.month, selectedDate!.day,
+                                    selectedStartTime!.hour, selectedStartTime!.minute,
+                                  );
+                                  final endDateTime = DateTime(
+                                    selectedDate!.year, selectedDate!.month, selectedDate!.day,
+                                    selectedEndTime!.hour, selectedEndTime!.minute,
+                                  );
+                                  
+                                  final Map<String, dynamic> rescheduleData = {
+                                    'date': DateFormat('yyyy-MM-dd').format(selectedDate!),
+                                    'start_time': '${selectedStartTime!.hour.toString().padLeft(2, '0')}:${selectedStartTime!.minute.toString().padLeft(2, '0')}',
+                                    'end_time': '${selectedEndTime!.hour.toString().padLeft(2, '0')}:${selectedEndTime!.minute.toString().padLeft(2, '0')}',
+                                    'scheduled_start': startDateTime.toIso8601String(),
+                                    'scheduled_end': endDateTime.toIso8601String(),
+                                    'timezone': selectedTimezone,
+                                    'location': locationController.text.trim(),
+                                    'meeting_link': meetingLinkController.text.trim(),
+                                  };
+                                  
+                                  success = await JobService.rescheduleInterview(id, rescheduleData);
+                                } catch (e) {
+                                  success = false;
+                                  errorMsg = e.toString();
+                                } finally {
+                                  if (mounted) Navigator.pop(context);
+                                }
+                                
+                                if (success) {
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Interview rescheduled successfully!'), backgroundColor: Colors.green));
+                                  _fetchInterviews(showLoader: false);
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(errorMsg.isNotEmpty ? 'Failed: $errorMsg' : 'Failed to reschedule.'), backgroundColor: Colors.red));
+                                }
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFE85D04),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                elevation: 0,
+                              ),
+                              child: const Text('Reschedule Interview', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ],
-            );
-          },
-        );
-      },
-    );
+              );
+            },
+          );
+        },
+      );
+    }
   }
 
   Future<void> _confirmDeclineInterview(dynamic interview) async {
@@ -333,7 +493,7 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        _fetchInterviews();
+        _fetchInterviews(showLoader: false);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -393,7 +553,7 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        _fetchInterviews();
+        _fetchInterviews(showLoader: false);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -1081,7 +1241,15 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
     final candidateName = candidate['full_name'] ?? interview['candidate_name'] ?? 'Unknown Candidate';
     final company = interview['company'] ?? job['company'] ?? {};
     final companyLogo = company['logo'] ?? interview['company_logo'];
-    final candidateImage = candidate['profile_image'] ?? candidate['avatar'] ?? interview['candidate_image'] ?? companyLogo;
+    final candidateImageRaw = candidate['profile_image'] ?? candidate['photo'] ?? candidate['image'] ?? candidate['avatar'] ?? interview['candidate_image'] ?? interview['candidate_photo'] ?? companyLogo;
+    
+    String? finalImageUrl = candidateImageRaw?.toString();
+    if (finalImageUrl != null && finalImageUrl.isNotEmpty && !finalImageUrl.startsWith('http')) {
+      finalImageUrl = finalImageUrl.startsWith('/') 
+          ? 'https://www.mindwareinfotech.com$finalImageUrl'
+          : 'https://www.mindwareinfotech.com/$finalImageUrl';
+    }
+
     final jobTitle = job['title'] ?? interview['job_title'] ?? 'Unknown Job';
     
     final rawStatus = interview['status']?.toString()?.toLowerCase() ?? 'pending';
@@ -1344,11 +1512,41 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              CustomAvatar(
-                imageUrl: candidateImage?.toString(),
-                fallbackText: candidateName,
-                radius: 25,
-                fallbackIcon: LucideIcons.user,
+              Container(
+                width: 50,
+                height: 50,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(0xFFF1F5F9),
+                ),
+                child: finalImageUrl != null && finalImageUrl.isNotEmpty
+                    ? ClipOval(
+                        child: CachedNetworkImage(
+                          imageUrl: finalImageUrl,
+                          fit: BoxFit.cover,
+                          width: 50,
+                          height: 50,
+                          placeholder: (context, url) => const Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                            ),
+                          ),
+                          errorWidget: (context, url, error) => Center(
+                            child: Text(
+                              candidateName.isNotEmpty ? candidateName[0].toUpperCase() : 'U',
+                              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: AppColors.primary),
+                            ),
+                          ),
+                        ),
+                      )
+                    : Center(
+                        child: Text(
+                          candidateName.isNotEmpty ? candidateName[0].toUpperCase() : 'U',
+                          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: AppColors.primary),
+                        ),
+                      ),
               ),
               const SizedBox(width: 12),
               Expanded(
