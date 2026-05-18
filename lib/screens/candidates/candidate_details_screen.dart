@@ -25,8 +25,12 @@ class CandidateDetailsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     print('DEBUG: CANDIDATE DETAILS JSON => ${jsonEncode(candidate)}');
     // Standardize mapping based on API response structure
-    final profile = candidate['candidate'] ?? {};
-    final job = candidate['job'] ?? {};
+    final Map<String, dynamic> profile = candidate['candidate'] is Map 
+        ? Map<String, dynamic>.from(candidate['candidate']) 
+        : <String, dynamic>{};
+    final Map<String, dynamic> job = candidate['job'] is Map 
+        ? Map<String, dynamic>.from(candidate['job']) 
+        : <String, dynamic>{};
     
     final name = profile['full_name'] ?? candidate['full_name'] ?? "Candidate";
     final jobTitle = job['title'] ?? candidate['job_title'] ?? 'Job Title';

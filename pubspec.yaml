@@ -37,13 +37,15 @@ dependencies:
   geolocator: ^14.0.2
   geocoding: ^4.0.0
   dropdown_search: ^7.0.0
-  url_launcher: ^6.3.1
+  url_launcher: ^6.3.2
   razorpay_flutter: ^1.4.5
   cached_network_image: ^3.4.1
   emoji_picker_flutter: ^4.4.0
   mime: ^2.0.0
   http_parser: ^4.1.2
   open_filex: ^4.7.0
+  webview_flutter: ^4.13.1
+  jitsi_meet_wrapper: ^0.2.0+1
 
 dev_dependencies:
   flutter_test:

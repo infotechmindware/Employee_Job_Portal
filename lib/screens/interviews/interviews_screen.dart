@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -5,6 +6,10 @@ import '../../providers/navigation_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../services/job_service.dart';
 import 'package:intl/intl.dart';
+import '../../widgets/common/custom_avatar.dart';
+import '../candidates/candidate_details_screen.dart';
+import 'package:jitsi_meet_wrapper/jitsi_meet_wrapper.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class InterviewsScreen extends ConsumerStatefulWidget {
   const InterviewsScreen({super.key});
@@ -31,13 +36,373 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
   Future<void> _fetchInterviews() async {
     setState(() {
       _isLoading = true;
+      _interviews = []; // Clear old list before loading new data
     });
-    final result = await JobService.getEmployerInterviews();
+
+    final tabName = _tabs[_selectedTab];
+    String? statusParam;
+    if (tabName == 'All') {
+      statusParam = 'all';
+    } else if (tabName == 'Upcoming') {
+      statusParam = 'upcoming';
+    } else if (tabName == 'Today') {
+      statusParam = 'today';
+    } else if (tabName == 'This Week') {
+      statusParam = 'week';
+    } else if (tabName == 'Completed') {
+      statusParam = 'completed';
+    } else if (tabName == 'Declined') {
+      statusParam = 'cancelled';
+    }
+
+    final result = await JobService.getEmployerInterviews(status: statusParam);
     setState(() {
       _interviews = result['interviews'] ?? [];
       _apiStats = result['stats'] ?? {};
       _isLoading = false;
     });
+  }
+
+  Future<void> _joinInterviewRoom(
+    String roomName,
+    String userName,
+    String email,
+  ) async {
+    try {
+      // Request runtime permissions before joining
+      await Permission.camera.request();
+      await Permission.microphone.request();
+
+      // Ensure roomName is valid (unique, no spaces, no special symbols)
+      // Standardizing to use snake_case / alphanumeric characters only
+      final cleanRoomName = roomName
+          .trim()
+          .replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_');
+
+      print('🚀 Joining Native Jitsi Room: $cleanRoomName on meet.jit.si as $userName ($email)');
+      await JitsiMeetWrapper.joinMeeting(
+        options: JitsiMeetingOptions(
+          roomNameOrUrl: cleanRoomName,
+          serverUrl: "https://meet.jit.si",
+          userDisplayName: userName,
+          userEmail: email,
+          isAudioMuted: false,
+          isVideoMuted: false,
+        ),
+      );
+    } catch (e) {
+      print('❌ Native Jitsi Error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to join interview room: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _showRescheduleDialog(dynamic interview) async {
+    final id = interview['id'];
+    if (id == null) return;
+
+    DateTime? selectedDate;
+    TimeOfDay? selectedStartTime;
+    TimeOfDay? selectedEndTime;
+
+    await showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Text(
+                'Reschedule Interview',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(LucideIcons.calendar, color: AppColors.primary),
+                    title: Text(
+                      selectedDate == null
+                          ? 'Select Date'
+                          : DateFormat('MMM dd, yyyy').format(selectedDate!),
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    trailing: const Icon(LucideIcons.chevronRight, size: 16),
+                    onTap: () async {
+                      final date = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now(),
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
+                      );
+                      if (date != null) {
+                        setDialogState(() {
+                          selectedDate = date;
+                        });
+                      }
+                    },
+                  ),
+                  const Divider(),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(LucideIcons.clock, color: AppColors.primary),
+                    title: Text(
+                      selectedStartTime == null
+                          ? 'Select Start Time'
+                          : selectedStartTime!.format(context),
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    trailing: const Icon(LucideIcons.chevronRight, size: 16),
+                    onTap: () async {
+                      final time = await showTimePicker(
+                        context: context,
+                        initialTime: TimeOfDay.now(),
+                      );
+                      if (time != null) {
+                        setDialogState(() {
+                          selectedStartTime = time;
+                        });
+                      }
+                    },
+                  ),
+                  const Divider(),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(LucideIcons.clock, color: AppColors.primary),
+                    title: Text(
+                      selectedEndTime == null
+                          ? 'Select End Time'
+                          : selectedEndTime!.format(context),
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    trailing: const Icon(LucideIcons.chevronRight, size: 16),
+                    onTap: () async {
+                      final time = await showTimePicker(
+                        context: context,
+                        initialTime: TimeOfDay.now().replacing(hour: (TimeOfDay.now().hour + 1) % 24),
+                      );
+                      if (time != null) {
+                        setDialogState(() {
+                          selectedEndTime = time;
+                        });
+                      }
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogCtx),
+                  child: const Text('Cancel', style: TextStyle(color: Color(0xFF64748B))),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: (selectedDate == null || selectedStartTime == null || selectedEndTime == null)
+                      ? null
+                      : () async {
+                          Navigator.pop(dialogCtx);
+
+                          showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder: (context) => const Center(
+                              child: CircularProgressIndicator(color: Colors.white),
+                            ),
+                          );
+
+                          bool success = false;
+                          String errorMsg = '';
+
+                          try {
+                            final startDateTime = DateTime(
+                              selectedDate!.year,
+                              selectedDate!.month,
+                              selectedDate!.day,
+                              selectedStartTime!.hour,
+                              selectedStartTime!.minute,
+                            );
+
+                            final endDateTime = DateTime(
+                              selectedDate!.year,
+                              selectedDate!.month,
+                              selectedDate!.day,
+                              selectedEndTime!.hour,
+                              selectedEndTime!.minute,
+                            );
+
+                            final Map<String, dynamic> rescheduleData = {
+                              'scheduled_start': startDateTime.toIso8601String(),
+                              'scheduled_end': endDateTime.toIso8601String(),
+                            };
+
+                            success = await JobService.rescheduleInterview(id, rescheduleData);
+                          } catch (e) {
+                            success = false;
+                            errorMsg = e.toString();
+                          } finally {
+                            if (mounted) {
+                              Navigator.pop(context); // Dismiss loading spinner
+                            }
+                          }
+
+                          if (success) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Interview rescheduled successfully!'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                            _fetchInterviews();
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(errorMsg.isNotEmpty
+                                    ? 'Failed to reschedule: $errorMsg'
+                                    : 'Failed to reschedule interview.'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        },
+                  child: const Text('Reschedule'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _confirmDeclineInterview(dynamic interview) async {
+    final id = interview['id'];
+    if (id == null) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Cancel Interview', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('Are you sure you want to cancel this scheduled interview?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('No', style: TextStyle(color: Color(0xFF64748B))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            child: const Text('Yes, Cancel'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        ),
+      );
+
+      final success = await JobService.cancelInterview(id);
+
+      if (mounted) Navigator.pop(context); // Dismiss loading
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Interview cancelled successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        _fetchInterviews();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to cancel interview.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _completeInterviewFlow(dynamic interview) async {
+    final id = interview['id'];
+    if (id == null) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Complete Interview', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('Mark this interview as completed?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF64748B))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF10B981),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            child: const Text('Complete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        ),
+      );
+
+      final success = await JobService.completeInterview(id);
+
+      if (mounted) Navigator.pop(context); // Dismiss loading
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Interview marked as completed!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        _fetchInterviews();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to complete interview.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   final List<String> _tabs = ['All', 'Upcoming', 'Today', 'This Week', 'Completed', 'Declined'];
@@ -333,7 +698,12 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
           return Padding(
             padding: const EdgeInsets.only(right: 12),
             child: InkWell(
-              onTap: () => setState(() => _selectedTab = index),
+              onTap: () {
+                setState(() {
+                  _selectedTab = index;
+                });
+                _fetchInterviews();
+              },
               borderRadius: BorderRadius.circular(12),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -709,10 +1079,13 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
     final job = interview['job'] ?? {};
     
     final candidateName = candidate['full_name'] ?? interview['candidate_name'] ?? 'Unknown Candidate';
-    final candidateImage = candidate['profile_image'] ?? candidate['avatar'] ?? interview['candidate_image'];
+    final company = interview['company'] ?? job['company'] ?? {};
+    final companyLogo = company['logo'] ?? interview['company_logo'];
+    final candidateImage = candidate['profile_image'] ?? candidate['avatar'] ?? interview['candidate_image'] ?? companyLogo;
     final jobTitle = job['title'] ?? interview['job_title'] ?? 'Unknown Job';
     
-    final status = (interview['status']?.toString() ?? 'Pending').toUpperCase();
+    final rawStatus = interview['status']?.toString()?.toLowerCase() ?? 'pending';
+    final status = rawStatus.toUpperCase();
     final interviewType = interview['interview_type']?.toString() ?? 'Online';
     
     // Format Date & Time properly
@@ -738,22 +1111,230 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
     }
 
     final meetingLink = interview['meeting_link']?.toString() ?? '';
-    final bool isLive = status == 'LIVE' || status == 'INTERVIEWING';
+    final bool isLive = rawStatus == 'live' || rawStatus == 'interviewing';
 
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    // Dynamic Badge Color mapping to exactly mirror premium Web styles
+    Color badgeBgColor;
+    Color badgeTextColor;
+    if (rawStatus == 'live' || rawStatus == 'interviewing') {
+      badgeBgColor = const Color(0xFFEEF2FF);
+      badgeTextColor = const Color(0xFF4F46E5);
+    } else if (rawStatus == 'scheduled' || rawStatus == 'rescheduled') {
+      badgeBgColor = const Color(0xFFFEF2F2);
+      badgeTextColor = const Color(0xFFEF4444);
+    } else if (rawStatus == 'completed') {
+      badgeBgColor = const Color(0xFFECFDF5);
+      badgeTextColor = const Color(0xFF059669);
+    } else if (rawStatus == 'cancelled' || rawStatus == 'declined') {
+      badgeBgColor = const Color(0xFFF1F5F9);
+      badgeTextColor = const Color(0xFF64748B);
+    } else {
+      badgeBgColor = const Color(0xFFF8FAFC);
+      badgeTextColor = const Color(0xFF475569);
+    }
+
+    // Dynamic list of buttons to populate the Wrap layout
+    final List<Widget> actionButtons = [];
+
+    // 1. Join Button
+    if (isLive || ((rawStatus == 'scheduled' || rawStatus == 'rescheduled') && meetingLink.isNotEmpty)) {
+      actionButtons.add(
+        ElevatedButton.icon(
+          onPressed: () async {
+            final id = interview['id'];
+            if (id == null) return;
+            
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              ),
+            );
+            
+            try {
+              final details = await JobService.getInterviewDetails(id);
+              if (mounted) Navigator.pop(context); // Dismiss loading dialog
+              
+              if (details != null) {
+                String? roomName = details['room_name']?.toString();
+                
+                if (roomName == null || roomName.isEmpty) {
+                  final roomUrl = details['room_url'] ?? details['meeting_url'] ?? details['jitsi_url'] ?? details['meeting_link'];
+                  if (roomUrl != null && roomUrl.toString().isNotEmpty) {
+                    try {
+                      final uri = Uri.parse(roomUrl.toString());
+                      if (uri.pathSegments.isNotEmpty) {
+                        if (uri.pathSegments.last == 'room' && uri.pathSegments.length >= 2) {
+                          roomName = 'mindware-interview-${uri.pathSegments[uri.pathSegments.length - 2]}';
+                        } else {
+                          roomName = uri.pathSegments.last;
+                        }
+                      }
+                    } catch (_) {}
+                  }
+                }
+                
+                if (roomName == null || roomName.isEmpty) {
+                  roomName = 'mindware-interview-$id';
+                }
+                
+                await _joinInterviewRoom(
+                  roomName,
+                  "Employer",
+                  "employer@mindwareinfotech.com",
+                );
+              } else {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Failed to fetch interview details.'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            } catch (e) {
+              if (mounted) Navigator.pop(context);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error joining room: $e'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            }
+          },
+          icon: const Icon(LucideIcons.video, size: 12),
+          label: const Text('Join', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFEF4444), // Match Web Red-Orange style
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+            elevation: 0,
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ),
+      );
+    }
+
+    // 2. Complete Button
+    if (rawStatus == 'scheduled' || rawStatus == 'rescheduled') {
+      actionButtons.add(
+        OutlinedButton.icon(
+          onPressed: () => _completeInterviewFlow(interview),
+          icon: const Icon(LucideIcons.check, size: 12, color: Color(0xFF10B981)),
+          label: const Text('Complete', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF10B981))),
+          style: OutlinedButton.styleFrom(
+            backgroundColor: const Color(0xFFECFDF5),
+            side: const BorderSide(color: Color(0xFFA7F3D0)),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ),
+      );
+    }
+
+    // 3. Reschedule Button
+    if (rawStatus == 'scheduled' || rawStatus == 'rescheduled') {
+      actionButtons.add(
+        OutlinedButton.icon(
+          onPressed: () => _showRescheduleDialog(interview),
+          icon: const Icon(LucideIcons.calendar, size: 12, color: Color(0xFF059669)),
+          label: const Text('Reschedule', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF059669))),
+          style: OutlinedButton.styleFrom(
+            backgroundColor: const Color(0xFFECFDF5),
+            side: const BorderSide(color: Color(0xFFA7F3D0)),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ),
+      );
+    }
+
+    // 4. Decline Button
+    if (rawStatus == 'scheduled' || rawStatus == 'rescheduled') {
+      actionButtons.add(
+        OutlinedButton.icon(
+          onPressed: () => _confirmDeclineInterview(interview),
+          icon: const Icon(LucideIcons.x, size: 12, color: Color(0xFFEF4444)),
+          label: const Text('Decline', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFFEF4444))),
+          style: OutlinedButton.styleFrom(
+            backgroundColor: const Color(0xFFFEF2F2),
+            side: const BorderSide(color: Color(0xFFFCA5A5)),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ),
+      );
+    }
+
+    // 5. View Details Button
+    actionButtons.add(
+      ElevatedButton(
+        onPressed: () {
+          try {
+            final appObj = interview['application'] ?? interview;
+            final rawCandidateData = {
+              if (appObj is Map) ...appObj,
+              if (appObj['candidate'] != null || interview['candidate'] != null)
+                'candidate': appObj['candidate'] ?? interview['candidate'],
+              if (appObj['job'] != null || interview['job'] != null)
+                'job': appObj['job'] ?? interview['job'],
+            };
+            
+            final Map<String, dynamic> safeCandidateData = Map<String, dynamic>.from(
+              jsonDecode(jsonEncode(rawCandidateData))
+            );
+
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => CandidateDetailsScreen(candidate: safeCandidateData),
+              ),
+            );
+          } catch (e) {
+            print('Navigation Error: $e');
+          }
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFF97316), // Match Premium Orange Style
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+          elevation: 0,
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+        child: const Text('View Details', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+      ),
+    );
+
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.dividerColor.withOpacity(0.05)),
-        boxShadow: theme.brightness == Brightness.light ? [
+        border: Border.all(color: isDark ? theme.dividerColor.withOpacity(0.1) : const Color(0xFFF1F5F9), width: 1.0),
+        boxShadow: !isDark ? [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ] : [],
       ),
@@ -761,17 +1342,13 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: const Color(0xFFF1F5F9),
-                backgroundImage: candidateImage != null && candidateImage.toString().isNotEmpty 
-                    ? NetworkImage(candidateImage.toString()) 
-                    : null,
-                child: candidateImage == null || candidateImage.toString().isEmpty
-                    ? const Icon(LucideIcons.user, color: Color(0xFF94A3B8))
-                    : null,
+              CustomAvatar(
+                imageUrl: candidateImage?.toString(),
+                fallbackText: candidateName,
+                radius: 25,
+                fallbackIcon: LucideIcons.user,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -780,64 +1357,49 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
                   children: [
                     Text(
                       candidateName,
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: theme.colorScheme.onSurface),
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: theme.colorScheme.onSurface),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
                       jobTitle,
-                      style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.6), fontSize: 13),
+                      style: const TextStyle(color: Color(0xFF888888), fontSize: 12, fontWeight: FontWeight.w400),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF6366F1).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
+                  color: badgeBgColor,
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  status.toUpperCase(),
-                  style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 10),
+                  status,
+                  style: TextStyle(color: badgeTextColor, fontWeight: FontWeight.bold, fontSize: 10),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          _buildInfoRow(LucideIcons.video, 'Type', interviewType),
-          const SizedBox(height: 8),
-          _buildInfoRow(LucideIcons.calendar, 'Date & Time', formattedDateTime),
+          _buildInfoRow(LucideIcons.video, 'Type: ', interviewType.toLowerCase()),
+          const SizedBox(height: 6),
+          _buildInfoRow(LucideIcons.calendar, 'Date & Time: ', formattedDateTime),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {},
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    side: const BorderSide(color: Color(0xFFE2E8F0)),
-                  ),
-                  child: const Text('View Details', style: TextStyle(color: Color(0xFF475569), fontWeight: FontWeight.w600, fontSize: 13)),
-                ),
-              ),
-              if (meetingLink.isNotEmpty && isLive) ...[
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(LucideIcons.video, size: 16),
-                    label: const Text('Join', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF6366F1),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      elevation: 0,
-                    ),
-                  ),
-                ),
-              ],
-            ],
+          // Align dynamic actions properly using Wrap layout
+          Align(
+            alignment: Alignment.centerRight,
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.end,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: actionButtons,
+            ),
           ),
         ],
       ),
@@ -846,17 +1408,23 @@ class _InterviewsScreenState extends ConsumerState<InterviewsScreen> {
 
   Widget _buildInfoRow(IconData icon, String label, String value) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Icon(icon, size: 16, color: const Color(0xFF94A3B8)),
-        const SizedBox(width: 8),
+        Icon(icon, size: 14, color: const Color(0xFF666666)),
+        const SizedBox(width: 6),
         Text(
-          '$label: ',
-          style: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
+          label,
+          style: const TextStyle(color: Color(0xFF666666), fontSize: 11, fontWeight: FontWeight.w500),
         ),
         Expanded(
           child: Text(
             value,
-            style: const TextStyle(color: Color(0xFF1E293B), fontSize: 13, fontWeight: FontWeight.w600),
+            style: const TextStyle(
+              color: Color(0xFF444444), 
+              fontSize: 11, 
+              fontWeight: FontWeight.w500,
+              height: 1.4,
+            ),
           ),
         ),
       ],

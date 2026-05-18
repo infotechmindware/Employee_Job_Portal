@@ -232,13 +232,18 @@ class JobService {
     }
   }
 
-  static Future<Map<String, dynamic>> getEmployerInterviews() async {
+  static Future<Map<String, dynamic>> getEmployerInterviews({String? status}) async {
     try {
       final auth = AuthService();
       final token = await auth.getToken();
-      final url = Uri.parse('$baseUrl/employer/interviews?include=candidate,job,application&per_page=1000');
+      
+      String urlStr = '$baseUrl/employer/interviews?include=candidate,job,application&per_page=1000';
+      if (status != null && status.isNotEmpty) {
+        urlStr += '&status=$status';
+      }
+      final url = Uri.parse(urlStr);
 
-      print('🚀 [API] Fetching ALL Interviews from: $url');
+      print('🚀 [API] Fetching Interviews from: $url');
 
       final response = await http.get(
         url,
@@ -508,6 +513,136 @@ class JobService {
     } catch (e) {
       print('❌ Schedule Interview Error: $e');
       return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>?> getInterviewDetails(dynamic id) async {
+    try {
+      final auth = AuthService();
+      final token = await auth.getToken();
+      final url = Uri.parse('$baseUrl/employer/interviews/$id');
+
+      print('🚀 [API] Fetching Interview Details for ID $id from: $url');
+
+      final response = await http.get(
+        url,
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      ).timeout(const Duration(seconds: 15));
+
+      print('📡 [API] Interview Details Status: ${response.statusCode}');
+      print('📦 [API] Interview Details Body: ${response.body}');
+      
+      if (response.statusCode == 200) {
+        final result = json.decode(response.body);
+        if (result is Map) {
+          final data = result['data'] ?? result;
+          if (data is Map) {
+            return Map<String, dynamic>.from(data);
+          }
+        }
+      }
+      return null;
+    } catch (e) {
+      print('❌ Get Interview Details Error: $e');
+      return null;
+    }
+  }
+
+  static Future<bool> completeInterview(dynamic id) async {
+    try {
+      final auth = AuthService();
+      final token = await auth.getToken();
+      final url = Uri.parse('$baseUrl/employer/interviews/$id/complete');
+
+      print('🚀 [API] Completing Interview ID: $id at: $url');
+
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      ).timeout(const Duration(seconds: 15));
+
+      print('📡 [API] Complete Interview Status: ${response.statusCode}');
+      print('📦 [API] Complete Interview Body: ${response.body}');
+      
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      print('❌ Complete Interview Error: $e');
+      return false;
+    }
+  }
+
+  static Future<bool> cancelInterview(dynamic id) async {
+    try {
+      final auth = AuthService();
+      final token = await auth.getToken();
+      final url = Uri.parse('$baseUrl/employer/interviews/$id/cancel');
+
+      print('🚀 [API] Cancelling/Declining Interview ID: $id at: $url');
+
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      ).timeout(const Duration(seconds: 15));
+
+      print('📡 [API] Cancel Interview Status: ${response.statusCode}');
+      print('📦 [API] Cancel Interview Body: ${response.body}');
+      
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      print('❌ Cancel Interview Error: $e');
+      return false;
+    }
+  }
+
+  static Future<bool> rescheduleInterview(dynamic id, Map<String, dynamic> data) async {
+    try {
+      final auth = AuthService();
+      final token = await auth.getToken();
+      final url = Uri.parse('$baseUrl/employer/interviews/$id/reschedule');
+
+      print('🚀 [API] Rescheduling Interview ID: $id at: $url');
+
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: jsonEncode(data),
+      ).timeout(const Duration(seconds: 20));
+
+      print('📡 [API] Reschedule Interview Status: ${response.statusCode}');
+      print('📦 [API] Reschedule Interview Body: ${response.body}');
+      
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        try {
+          final resBody = jsonDecode(response.body);
+          if (resBody is Map) {
+            return resBody['success'] == true || resBody['status'] == true;
+          }
+        } catch (_) {}
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('❌ Reschedule Interview Error: $e');
+      return false;
     }
   }
 }
