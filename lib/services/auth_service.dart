@@ -204,6 +204,14 @@ class AuthService {
     required String email,
     required String password,
     required String emailOtp,
+    String? contactPerson,
+    String? registerAs,
+    String? industryType,
+    String? companyType,
+    String? companySize,
+    String? gstin,
+    String? website,
+    String? pinCode,
   }) async {
     try {
       final response = await _post('/register-employer', {
@@ -212,6 +220,14 @@ class AuthService {
         'email': email,
         'password': password,
         'email_otp': emailOtp,
+        if (contactPerson != null) 'contact_person': contactPerson,
+        if (registerAs != null) 'register_as': registerAs,
+        if (industryType != null) 'industry': industryType,
+        if (companyType != null) 'company_type': companyType,
+        if (companySize != null) 'company_size': companySize,
+        if (gstin != null) 'gstin': gstin,
+        if (website != null) 'website': website,
+        if (pinCode != null) 'postal_code': pinCode,
       });
 
       print('Register Response: ${response.body}');

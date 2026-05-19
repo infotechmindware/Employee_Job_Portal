@@ -70,6 +70,14 @@ class AuthNotifier extends Notifier<AuthState> {
     required String email,
     required String password,
     required String emailOtp,
+    String? contactPerson,
+    String? registerAs,
+    String? industryType,
+    String? companyType,
+    String? companySize,
+    String? gstin,
+    String? website,
+    String? pinCode,
   }) async {
     state = state.copyWith(isLoading: true, error: null);
     final result = await _authService.registerEmployer(
@@ -78,6 +86,14 @@ class AuthNotifier extends Notifier<AuthState> {
       email: email,
       password: password,
       emailOtp: emailOtp,
+      contactPerson: contactPerson,
+      registerAs: registerAs,
+      industryType: industryType,
+      companyType: companyType,
+      companySize: companySize,
+      gstin: gstin,
+      website: website,
+      pinCode: pinCode,
     );
     
     if (result['success']) {

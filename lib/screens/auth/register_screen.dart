@@ -5,6 +5,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../theme/app_colors.dart';
 import 'widgets/auth_layout.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/employer_auth_service.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -21,10 +22,80 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   
+  // New Controllers
+  final _contactPersonController = TextEditingController();
+  final _gstinController = TextEditingController();
+  final _websiteController = TextEditingController();
+  final _pinCodeController = TextEditingController();
+
+  // Phone Tab Controllers
+  final _phoneCompanyNameController = TextEditingController();
+  final _phoneMobileController = TextEditingController();
+  final _phoneEmailController = TextEditingController();
+  final _phoneOtpController = TextEditingController();
+  final _phonePasswordController = TextEditingController();
+
+  final _employerAuthService = EmployerAuthService();
+
+  bool _obscurePhonePassword = true;
+  bool _isSubmitting = false;
+  bool _isSendingPhoneOtp = false;
+  bool _isPhoneOtpSent = false;
+  int _phoneTimerSeconds = 60;
+  bool _canResendPhoneOtp = true;
+  Timer? _phoneTimer;
+  
   bool _isEmailLogin = true;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _agreeToTerms = false;
+  
+  // New Dropdown selection states
+  String? _selectedRegisterAs;
+  String? _selectedIndustryType;
+  String? _selectedCompanyType;
+  String? _selectedCompanySize;
+
+  // New Dropdown options lists
+  final List<String> _registerAsOptions = [
+    'Company / Business',
+    'Individual',
+    'Consultancy',
+  ];
+
+  final List<String> _industries = [
+    'IT/Software',
+    'Finance',
+    'Healthcare',
+    'Education',
+    'Manufacturing',
+    'Retail',
+    'Real Estate',
+    'Hospitality',
+    'Other'
+  ];
+
+  final List<String> _companyTypes = [
+    'Proprietorship',
+    'Partnership',
+    'Private Limited',
+    'Public Limited',
+    'Limited Liability Partnership (LLP)',
+    'One Person Company (OPC)',
+    'Government / PSU',
+    'Non-Profit (NGO / Trust)',
+    'Startup',
+    'Freelancer / Individual'
+  ];
+
+  final List<String> _companySizes = [
+    '1-10',
+    '11-50',
+    '51-200',
+    '201-500',
+    '501-1000',
+    '1000+'
+  ];
   
   // OTP related state
   bool _isOtpSent = false;
@@ -125,7 +196,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _otpController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _contactPersonController.dispose();
+    _gstinController.dispose();
+    _websiteController.dispose();
+    _pinCodeController.dispose();
+    _phoneCompanyNameController.dispose();
+    _phoneMobileController.dispose();
+    _phoneEmailController.dispose();
+    _phoneOtpController.dispose();
+    _phonePasswordController.dispose();
     _timer?.cancel();
+    _phoneTimer?.cancel();
     super.dispose();
   }
 
@@ -159,30 +240,109 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     setState(() => _isSendingOtp = true);
     
-    final success = await ref.read(authProvider.notifier).sendEmailOtp(
-      _emailController.text,
-      role: 'employer',
-      purpose: 'auth',
-    );
-    
-    setState(() => _isSendingOtp = false);
+    try {
+      final res = await _employerAuthService.sendEmailOtp(
+        email: _emailController.text.trim(),
+      );
 
-    if (success) {
-      setState(() => _isOtpSent = true);
-      _startTimer();
+      if (res['success']) {
+        setState(() => _isOtpSent = true);
+        _startTimer();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(res['message'] ?? 'Email OTP sent successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(res['message'] ?? 'Failed to send Email OTP'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('OTP sent successfully!')),
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
-    } else {
+    } finally {
       if (mounted) {
-        final error = ref.read(authProvider).error;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error ?? 'Failed to send OTP')),
-        );
+        setState(() => _isSendingOtp = false);
       }
     }
+  }
+
+  void _sendPhoneOtp() async {
+    final phone = _phoneMobileController.text.trim();
+    if (phone.isEmpty || phone.length != 10 || double.tryParse(phone) == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid 10-digit mobile number')),
+      );
+      return;
+    }
+
+    setState(() => _isSendingPhoneOtp = true);
+
+    try {
+      final res = await _employerAuthService.sendPhoneOtp(
+        phone: phone,
+      );
+
+      if (res['success']) {
+        setState(() => _isPhoneOtpSent = true);
+        _startPhoneTimer();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(res['message'] ?? 'Phone OTP sent successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(res['message'] ?? 'Failed to send Phone OTP'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSendingPhoneOtp = false);
+      }
+    }
+  }
+
+  void _startPhoneTimer() {
+    _canResendPhoneOtp = false;
+    _phoneTimerSeconds = 60;
+    _phoneTimer?.cancel();
+    _phoneTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        if (_phoneTimerSeconds > 0) {
+          _phoneTimerSeconds--;
+        } else {
+          _canResendPhoneOtp = true;
+          _phoneTimer?.cancel();
+        }
+      });
+    });
   }
 
   void _handleRegister() async {
@@ -200,30 +360,81 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       return;
     }
 
-    if (_nameController.text.isEmpty || _mobileController.text.isEmpty || _emailController.text.isEmpty || _otpController.text.isEmpty || _passwordController.text.isEmpty) {
+    if (_nameController.text.isEmpty ||
+        _mobileController.text.isEmpty ||
+        _emailController.text.isEmpty ||
+        _otpController.text.isEmpty ||
+        _passwordController.text.isEmpty ||
+        _contactPersonController.text.isEmpty ||
+        _selectedRegisterAs == null ||
+        _selectedIndustryType == null ||
+        _selectedCompanyType == null ||
+        _selectedCompanySize == null ||
+        _pinCodeController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill in all required fields including OTP')),
       );
       return;
     }
 
-    final success = await ref.read(authProvider.notifier).registerEmployer(
-      fullName: _nameController.text,
-      mobile: _mobileController.text,
-      email: _emailController.text,
-      password: _passwordController.text,
-      emailOtp: _otpController.text,
-    );
+    if (_mobileController.text.trim().length != 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Primary Mobile Number must be exactly 10 digits')),
+      );
+      return;
+    }
 
-    if (success) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Account created! Logging in...')),
-        );
-        
+    if (_pinCodeController.text.trim().length != 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pin Code must be exactly 6 digits')),
+      );
+      return;
+    }
+
+    if (_passwordController.text.length < 8) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password must be at least 8 characters long')),
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final registerAsValue = _selectedRegisterAs == 'Company / Business'
+          ? 'company'
+          : (_selectedRegisterAs == 'Consultancy' ? 'consultancy' : 'individual');
+
+      final res = await _employerAuthService.registerEmployer(
+        companyName: _nameController.text.trim(),
+        email: _emailController.text.trim(),
+        phone: _mobileController.text.trim(),
+        fullName: _contactPersonController.text.trim(),
+        registerAs: registerAsValue,
+        industry: _selectedIndustryType!,
+        companyType: _selectedCompanyType!,
+        companySize: _selectedCompanySize!,
+        gstin: _gstinController.text.trim(),
+        website: _websiteController.text.trim(),
+        pincode: _pinCodeController.text.trim(),
+        password: _passwordController.text,
+        confirmPassword: _confirmPasswordController.text,
+        emailOtp: _otpController.text.trim(),
+      );
+
+      if (res['success']) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(res['message'] ?? 'Registration successful! Logging in...'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+
         // Auto login after registration
         final loginSuccess = await ref.read(authProvider.notifier).login(
-          _emailController.text,
+          _emailController.text.trim(),
           _passwordController.text,
         );
 
@@ -232,13 +443,122 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         } else if (mounted) {
           Navigator.pushReplacementNamed(context, '/login');
         }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(res['message'] ?? 'Registration failed'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
-    } else {
+    } catch (e) {
       if (mounted) {
-        final error = ref.read(authProvider).error;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error ?? 'Registration failed')),
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
+  }
+
+  void _handlePhoneRegister() async {
+    if (!_agreeToTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please agree to the Terms and Conditions')),
+      );
+      return;
+    }
+
+    final companyName = _phoneCompanyNameController.text.trim();
+    final phone = _phoneMobileController.text.trim();
+    final email = _phoneEmailController.text.trim();
+    final otp = _phoneOtpController.text.trim();
+    final password = _phonePasswordController.text;
+
+    if (companyName.isEmpty || phone.isEmpty || email.isEmpty || otp.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill in all required fields including OTP')),
+      );
+      return;
+    }
+
+    if (phone.length != 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Mobile number must be exactly 10 digits')),
+      );
+      return;
+    }
+
+    if (!_isValidEmail(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid email address')),
+      );
+      return;
+    }
+
+    if (password.length < 8) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password must be at least 8 characters long')),
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final res = await _employerAuthService.registerEmployerPhone(
+        phone: phone,
+        otp: otp,
+        companyName: companyName,
+        email: email,
+        password: password,
+      );
+
+      if (res['success']) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(res['message'] ?? 'Registration successful! Logging in...'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+
+        // Auto login after registration
+        final loginSuccess = await ref.read(authProvider.notifier).login(
+          email,
+          password,
+        );
+
+        if (loginSuccess && mounted) {
+          Navigator.pushReplacementNamed(context, '/dashboard');
+        } else if (mounted) {
+          Navigator.pushReplacementNamed(context, '/login');
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(res['message'] ?? 'Registration failed'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
       }
     }
   }
@@ -395,17 +715,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            IconButton(
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(LucideIcons.chevronLeft, size: 20, color: Colors.grey),
-              style: IconButton.styleFrom(padding: EdgeInsets.zero, alignment: Alignment.centerLeft),
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
-        Row(
           children: [
             Container(
               width: 40,
@@ -480,19 +789,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         const SizedBox(height: 24),
         
         if (_isEmailLogin) ...[
-          _buildLabel('Full Name'),
+          _buildLabel('Your Company Name'),
           const SizedBox(height: 8),
-          _buildTextField('Enter your full name', controller: _nameController),
+          _buildTextField('Enter company name', controller: _nameController),
           const SizedBox(height: 16),
           
-          _buildLabel('Mobile Number'),
+          _buildLabel('Official Email Address'),
           const SizedBox(height: 8),
-          _buildTextField('Enter mobile number', controller: _mobileController),
-          const SizedBox(height: 16),
-          
-          _buildLabel('Email Address'),
-          const SizedBox(height: 8),
-          _buildTextField('Enter your email address', 
+          _buildTextField('official@company.com', 
             isSuccess: _emailTouched && _emailValid, 
             controller: _emailController,
             readOnly: _isOtpSent,
@@ -501,6 +805,67 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           Text("We'll use this to create your account. You can add more details after registration.", style: TextStyle(color: Colors.grey[500], fontSize: 12)),
           const SizedBox(height: 16),
           
+          _buildLabel('Mobile'),
+          const SizedBox(height: 8),
+          _buildTextField('10-digit mobile number', controller: _mobileController),
+          const SizedBox(height: 16),
+
+          _buildLabel('Contact Person Name'),
+          const SizedBox(height: 8),
+          _buildTextField('Enter contact person name', controller: _contactPersonController),
+          const SizedBox(height: 16),
+
+          _buildLabel('Register As'),
+          const SizedBox(height: 8),
+          _buildDropdownField('Company / Business', _selectedRegisterAs, _registerAsOptions, (val) {
+            setState(() {
+              _selectedRegisterAs = val;
+            });
+          }),
+          const SizedBox(height: 16),
+
+          _buildLabel('Industry Type'),
+          const SizedBox(height: 8),
+          _buildDropdownField('Select Industry Type', _selectedIndustryType, _industries, (val) {
+            setState(() {
+              _selectedIndustryType = val;
+            });
+          }),
+          const SizedBox(height: 16),
+
+          _buildLabel('Company Type'),
+          const SizedBox(height: 8),
+          _buildDropdownField('Select Company Type', _selectedCompanyType, _companyTypes, (val) {
+            setState(() {
+              _selectedCompanyType = val;
+            });
+          }),
+          const SizedBox(height: 16),
+
+          _buildLabel('Company Size'),
+          const SizedBox(height: 8),
+          _buildDropdownField('Select Company Size', _selectedCompanySize, _companySizes, (val) {
+            setState(() {
+              _selectedCompanySize = val;
+            });
+          }),
+          const SizedBox(height: 16),
+
+          const Text('GSTIN (Optional)', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600, fontSize: 13)),
+          const SizedBox(height: 8),
+          _buildTextField('Enter GST number', controller: _gstinController),
+          const SizedBox(height: 16),
+
+          const Text('Company Website (Optional)', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600, fontSize: 13)),
+          const SizedBox(height: 8),
+          _buildTextField('https://www.company.com', controller: _websiteController),
+          const SizedBox(height: 16),
+
+          _buildLabel('Pin Code'),
+          const SizedBox(height: 8),
+          _buildTextField('6-digit pin code', controller: _pinCodeController),
+          const SizedBox(height: 16),
+
           _buildLabel('Email OTP'),
           const SizedBox(height: 8),
           Row(
@@ -633,7 +998,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: ref.watch(authProvider).isLoading ? null : _handleRegister,
+              onPressed: _isSubmitting ? null : _handleRegister,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
@@ -641,7 +1006,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 elevation: 0,
               ),
-              child: ref.watch(authProvider).isLoading
+              child: _isSubmitting
                   ? const SizedBox(
                       height: 20,
                       width: 20,
@@ -652,24 +1017,24 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           ),
         ] else ...[
           // Mobile OTP Form
-          _buildLabel('Full Name'),
+          _buildLabel('Company Name'),
           const SizedBox(height: 8),
-          _buildTextField('Your full name'),
+          _buildTextField('Your company name', controller: _phoneCompanyNameController),
           const SizedBox(height: 16),
           
           _buildLabel('Primary Mobile Number'),
           const SizedBox(height: 8),
-          _buildTextField('Enter mobile number'),
+          _buildTextField('Enter 10-digit mobile number', controller: _phoneMobileController),
           const SizedBox(height: 16),
           
-          const Text('Additional Mobile Number', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+          _buildLabel('Email Address'),
           const SizedBox(height: 8),
-          _buildTextField('Optional second number'),
+          _buildTextField('Enter official email address', controller: _phoneEmailController),
           const SizedBox(height: 16),
-          
-          const Text('Email Address', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+
+          _buildLabel('Password'),
           const SizedBox(height: 8),
-          _buildTextField('Optional email address'),
+          _buildPasswordField('Enter password (min. 8 characters)', true, controller: _phonePasswordController, isPhone: true),
           const SizedBox(height: 24),
           
           _buildLabel('OTP'),
@@ -677,11 +1042,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           Row(
             children: [
               Expanded(
-                child: _buildTextField('6-digit OTP'),
+                child: _buildTextField('6-digit OTP', controller: _phoneOtpController),
               ),
               const SizedBox(width: 16),
               ElevatedButton(
-                onPressed: () {},
+                onPressed: _isSendingPhoneOtp || !_canResendPhoneOtp ? null : _sendPhoneOtp,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFE0E7FF),
                   foregroundColor: AppColors.primary,
@@ -689,7 +1054,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   elevation: 0,
                 ),
-                child: const Text('Send OTP', style: TextStyle(fontWeight: FontWeight.bold)),
+                child: _isSendingPhoneOtp
+                    ? const SizedBox(
+                        height: 16,
+                        width: 16,
+                        child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2),
+                      )
+                    : Text(
+                        _canResendPhoneOtp ? 'Send OTP' : 'Resend in ${_phoneTimerSeconds}s',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
               ),
             ],
           ),
@@ -729,15 +1103,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () {},
+              onPressed: _isSubmitting ? null : _handlePhoneRegister,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF93A5F8),
+                backgroundColor: _isSubmitting ? const Color(0xFF93A5F8) : AppColors.primary,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 elevation: 0,
               ),
-              child: const Text('Create With OTP', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              child: _isSubmitting
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    )
+                  : const Text('Create With OTP', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             ),
           ),
         ],
@@ -788,7 +1168,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     return TextFormField(
       controller: controller,
       readOnly: readOnly,
-      keyboardType: hint.contains('OTP') || hint.contains('mobile') ? TextInputType.number : TextInputType.text,
+      keyboardType: hint.contains('OTP') || hint.contains('mobile') || hint.contains('Mobile') || hint.contains('pin') || hint.contains('Pin') || hint.contains('GST') || hint.contains('number') ? TextInputType.number : TextInputType.text,
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
@@ -811,8 +1191,45 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     );
   }
 
-  Widget _buildPasswordField(String hint, bool isFirst, {bool isSuccess = false, TextEditingController? controller}) {
-    bool obscure = isFirst ? _obscurePassword : _obscureConfirmPassword;
+  Widget _buildDropdownField(String placeholder, String? value, List<String> items, ValueChanged<String?> onChanged) {
+    return DropdownButtonFormField<String>(
+      value: value,
+      isExpanded: true,
+      style: const TextStyle(fontSize: 14, color: Colors.black87),
+      decoration: InputDecoration(
+        hintText: placeholder,
+        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+        filled: true,
+        fillColor: AppColors.background,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey[200]!),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.primary),
+        ),
+      ),
+      icon: const Icon(LucideIcons.chevronDown, size: 18, color: Colors.grey),
+      dropdownColor: Colors.white,
+      items: items.map((v) => DropdownMenuItem(
+        value: v,
+        child: Text(
+          v,
+          style: const TextStyle(fontSize: 14, color: Colors.black87),
+        ),
+      )).toList(),
+      onChanged: onChanged,
+    );
+  }
+
+  Widget _buildPasswordField(String hint, bool isFirst, {bool isSuccess = false, TextEditingController? controller, bool isPhone = false}) {
+    bool obscure = isPhone ? _obscurePhonePassword : (isFirst ? _obscurePassword : _obscureConfirmPassword);
     return TextFormField(
       controller: controller,
       obscureText: obscure,
@@ -842,7 +1259,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           ),
           onPressed: () {
             setState(() {
-              if (isFirst) {
+              if (isPhone) {
+                _obscurePhonePassword = !_obscurePhonePassword;
+              } else if (isFirst) {
                 _obscurePassword = !_obscurePassword;
               } else {
                 _obscureConfirmPassword = !_obscureConfirmPassword;
